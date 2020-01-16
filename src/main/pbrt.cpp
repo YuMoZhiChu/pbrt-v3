@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -80,6 +80,7 @@ int main(int argc, char *argv[]) {
     Options options;
     std::vector<std::string> filenames;
     // Process command-line arguments
+	// 处理参数的输入, 输入 --help 调用 usage() 查看帮助信息
     for (int i = 1; i < argc; ++i) {
         if (!strcmp(argv[i], "--nthreads") || !strcmp(argv[i], "-nthreads")) {
             if (i + 1 == argc)
@@ -158,9 +159,13 @@ int main(int argc, char *argv[]) {
         printf("See the file LICENSE.txt for the conditions of the license.\n");
         fflush(stdout);
     }
-    pbrtInit(options);
-    // Process scene description
-    if (filenames.empty()) {
+    
+	// 传入 Options 结构体参数, 进行全局的初始化
+	pbrtInit(options);
+    
+	// Process scene description
+    // 处理 场景 描述文件
+	if (filenames.empty()) {
         // Parse scene from standard input
         pbrtParseFile("-");
     } else {
@@ -168,6 +173,8 @@ int main(int argc, char *argv[]) {
         for (const std::string &f : filenames)
             pbrtParseFile(f);
     }
+
+	// 结束
     pbrtCleanup();
     return 0;
 }
