@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -750,6 +750,9 @@ class Bounds3 {
   public:
     // Bounds3 Public Methods
     Bounds3() {
+		// https://zh.cppreference.com/w/cpp/types/numeric_limits
+		// numeric_limits 类模板提供查询各种算术类型属性的标准化方式
+		// 例如: int 类型的最大可能值是 std::numeric_limits<int>::max()
         T minNum = std::numeric_limits<T>::lowest();
         T maxNum = std::numeric_limits<T>::max();
         pMin = Point3<T>(maxNum, maxNum, maxNum);

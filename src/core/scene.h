@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -56,18 +56,22 @@ class Scene {
         // Scene Constructor Implementation
         worldBound = aggregate->WorldBound();
         for (const auto &light : lights) {
+			// 对一些 光照Light 进行 预处理Preprocess , 在 场景Scene 定义之后, 开始渲染之前
             light->Preprocess(*this);
             if (light->flags & (int)LightFlags::Infinite)
                 infiniteLights.push_back(light);
         }
     }
     const Bounds3f &WorldBound() const { return worldBound; }
+	// 获得 Ray 和 Primitive 的 Intersect 函数, 如果 True, 参数 isect 会被填入数据
     bool Intersect(const Ray &ray, SurfaceInteraction *isect) const;
+	// 获得 Ray 和 Primitive 的 Intersect 函数, 不去计算最近的 Intersection, 效率更高
     bool IntersectP(const Ray &ray) const;
     bool IntersectTr(Ray ray, Sampler &sampler, SurfaceInteraction *isect,
                      Spectrum *transmittance) const;
 
     // Scene Public Data
+	// 这里的 光照Light 是全局的, 光会对场景中的所有物体造成影响(没有剔除, 分块等优化操作)
     std::vector<std::shared_ptr<Light>> lights;
     // Store infinite light sources separately for cases where we only want
     // to loop over them.
@@ -75,6 +79,8 @@ class Scene {
 
   private:
     // Scene Private Data
+	// 所有在场景中的几何体都用 Primitive 表示, 结合了 Shape 和 Material
+	// 类 Aggregate 是一个几何体, 包含其他 Primitive 的引用
     std::shared_ptr<Primitive> aggregate;
     Bounds3f worldBound;
 };
