@@ -40,3 +40,4 @@ Debug/pbrt_test.ilk
 CMakeFiles/3.13.0-rc1/VCTargetsPath.txt
 CMakeFiles/TargetDirectories.txt
 CMakeCache.txt
+*.ilk
