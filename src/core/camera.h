@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -65,6 +65,7 @@ class Camera {
     // Camera Public Data
     AnimatedTransform CameraToWorld;
     const Float shutterOpen, shutterClose;
+	// handles image storage
     Film *film;
     const Medium *medium;
 };

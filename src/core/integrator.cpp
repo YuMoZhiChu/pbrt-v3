@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -237,6 +237,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
                    (sampleExtent.y + tileSize - 1) / tileSize);
     ProgressReporter reporter(nTiles.x * nTiles.y, "Rendering");
     {
+		// 图片被分成 tile, 我们对 tile 中的每个 Pixel像素点做处理, 这里是支持并行 tile 处理的
         ParallelFor2D([&](Point2i tile) {
             // Render section of image corresponding to _tile_
 

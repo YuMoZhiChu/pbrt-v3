@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -244,6 +244,7 @@ int MaxThreadIndex() {
     return PbrtOptions.nThreads == 0 ? NumSystemCores() : PbrtOptions.nThreads;
 }
 
+// Render image tiles in parallel
 void ParallelFor2D(std::function<void(Point2i)> func, const Point2i &count) {
     CHECK(threads.size() > 0 || MaxThreadIndex() == 1);
 

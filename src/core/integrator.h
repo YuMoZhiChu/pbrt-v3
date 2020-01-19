@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -54,6 +54,7 @@ class Integrator {
   public:
     // Integrator Interface
     virtual ~Integrator();
+	// 传入 场景Scene 的引用
     virtual void Render(const Scene &scene) = 0;
 };
 
@@ -77,10 +78,12 @@ std::unique_ptr<Distribution1D> ComputeLightPowerDistribution(
 class SamplerIntegrator : public Integrator {
   public:
     // SamplerIntegrator Public Methods
+	// 执行逻辑 pbrtWorldEnd() -> RenderOptions::MakeIntegrator() -> Sampler()
     SamplerIntegrator(std::shared_ptr<const Camera> camera,
                       std::shared_ptr<Sampler> sampler,
                       const Bounds2i &pixelBounds)
         : camera(camera), sampler(sampler), pixelBounds(pixelBounds) {}
+	// can leave this method unimplemented
     virtual void Preprocess(const Scene &scene, Sampler &sampler) {}
     void Render(const Scene &scene);
     virtual Spectrum Li(const RayDifferential &ray, const Scene &scene,
