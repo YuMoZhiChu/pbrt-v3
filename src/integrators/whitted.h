@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -46,6 +46,8 @@
 namespace pbrt {
 
 // WhittedIntegrator Declarations
+// The Whitted integrator works by recursively evaluating radiance along reflected and refracted ray directions
+// W 积分器, 会递归的计算反射和折射的光线
 class WhittedIntegrator : public SamplerIntegrator {
   public:
     // WhittedIntegrator Public Methods

@@ -233,6 +233,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
     Bounds2i sampleBounds = camera->film->GetSampleBounds();
     Vector2i sampleExtent = sampleBounds.Diagonal();
     const int tileSize = 16;
+	// 向上取整, ParallelFor2D 能够处理未使用到的像素点
     Point2i nTiles((sampleExtent.x + tileSize - 1) / tileSize,
                    (sampleExtent.y + tileSize - 1) / tileSize);
     ProgressReporter reporter(nTiles.x * nTiles.y, "Rendering");
@@ -242,13 +243,22 @@ void SamplerIntegrator::Render(const Scene &scene) {
             // Render section of image corresponding to _tile_
 
             // Allocate _MemoryArena_ for tile
+			// 为 tile 分配 内存
+			// Li() 函数的计算需要一部分的内存,在多进程的条件下,使用原生接口在Sync,Struct,track等点上会有消耗
+			// 使用 MemoryArea 替代, 该实例只允许用于一个线程上
             MemoryArena arena;
 
             // Get sampler instance for tile
+			// 根据 tile 生成 随机数 , 获取对应的 Sample
+			// sampler 需要维护一些数据(比如当前采样到哪个 pixel, 它的坐标), 所以多线程不能使用一个 sampler
+			// sampler->Clone 提供一个新的实例, 参数是 根据 tile 生成的 伪随机种子
+			// ???? seed 指的是伪随机数种子, 为什么需要 sampler的clone 有不同的 
             int seed = tile.y * nTiles.x + tile.x;
             std::unique_ptr<Sampler> tileSampler = sampler->Clone(seed);
 
             // Compute sample bounds for tile
+			// 计算 bound
+			// 根据 tile 得到边界, 可能有不满 16*16 的情况
             int x0 = sampleBounds.pMin.x + tile.x * tileSize;
             int x1 = std::min(x0 + tileSize, sampleBounds.pMax.x);
             int y0 = sampleBounds.pMin.y + tile.y * tileSize;
@@ -257,10 +267,13 @@ void SamplerIntegrator::Render(const Scene &scene) {
             LOG(INFO) << "Starting image tile " << tileBounds;
 
             // Get _FilmTile_ for tile
+			// FileTile 使用 private std::vector<FilmTilePixel> pixels 去存储当前 tile 的 pixel 值
+			// private 保证了其他线程不会 并发的修改
             std::unique_ptr<FilmTile> filmTile =
                 camera->film->GetFilmTile(tileBounds);
 
             // Loop over pixels in tile to render them
+			// 逐 像素Pixel 渲染
             for (Point2i pixel : tileBounds) {
                 {
                     ProfilePhase pp(Prof::StartPixel);
@@ -276,6 +289,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
 
                 do {
                     // Initialize _CameraSample_ for current sample
+					// 初始化 Camera Sample
                     CameraSample cameraSample =
                         tileSampler->GetCameraSample(pixel);
 
@@ -283,11 +297,14 @@ void SamplerIntegrator::Render(const Scene &scene) {
                     RayDifferential ray;
                     Float rayWeight =
                         camera->GenerateRayDifferential(cameraSample, &ray);
+					// ???? samplesPerPixel 字面意思是 一个像素采样多次, 为什么一个像素可以采样多次啊
+					// 这是一个 int, 所以也不存在小数的情况
                     ray.ScaleDifferentials(
                         1 / std::sqrt((Float)tileSampler->samplesPerPixel));
                     ++nCameraRays;
 
                     // Evaluate radiance along camera ray
+					// 计算 radiance
                     Spectrum L(0.f);
                     if (rayWeight > 0) L = Li(ray, scene, *tileSampler, arena);
 
@@ -318,10 +335,11 @@ void SamplerIntegrator::Render(const Scene &scene) {
                         ray << " -> L = " << L;
 
                     // Add camera ray's contribution to image
+					// 把 camera ray 加入 image
                     filmTile->AddSample(cameraSample.pFilm, L, rayWeight);
 
-                    // Free _MemoryArena_ memory from computing image sample
-                    // value
+                    // Free _MemoryArena_ memory from computing image sample value
+                    // 释放 MemoryArena
                     arena.Reset();
                 } while (tileSampler->StartNextSample());
             }

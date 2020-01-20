@@ -86,6 +86,17 @@ class SamplerIntegrator : public Integrator {
 	// can leave this method unimplemented
     virtual void Preprocess(const Scene &scene, Sampler &sampler) {}
     void Render(const Scene &scene);
+	// Li 是一个纯虚函数, 每个子类都要提供他们的实现
+	// ray: the ray along which the incident radiance should be evaluated.
+	// ray: 入射光
+	// scene: the Scene being rendered
+	// scene: 被渲染的场景
+	// sampler: a sample generator used to solve the light transport equation via Monte Carlo integration.
+	// sampler: 采样器, Monte Carlo integration 是啥玩意 ????
+	// arena: a MemoryArena for efficient temporary memory
+	// arena: 加速内存
+	// depth: the number of ray bounces
+	// depth: 反弹次数 啥玩意 ????
     virtual Spectrum Li(const RayDifferential &ray, const Scene &scene,
                         Sampler &sampler, MemoryArena &arena,
                         int depth = 0) const = 0;

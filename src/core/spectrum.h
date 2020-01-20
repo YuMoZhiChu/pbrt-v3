@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -459,6 +459,7 @@ class RGBSpectrum : public CoefficientSpectrum<3> {
         XYZToRGB(xyz, r.c);
         return r;
     }
+	// ???? 这个权重算法的意义是什么
     Float y() const {
         const Float YWeight[3] = {0.212671f, 0.715160f, 0.072169f};
         return YWeight[0] * c[0] + YWeight[1] * c[1] + YWeight[2] * c[2];

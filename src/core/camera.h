@@ -53,7 +53,12 @@ class Camera {
     Camera(const AnimatedTransform &CameraToWorld, Float shutterOpen,
            Float shutterClose, Film *film, const Medium *medium);
     virtual ~Camera();
+	// 对给定的采样点 CameraSample
+	// returns a floating-point weight associated with the ray
+	// 在简单照相机中, Ray 的权重是一样的
     virtual Float GenerateRay(const CameraSample &sample, Ray *ray) const = 0;
+	// 根据采样点 CameraSample 生成 Ray, 还包含了 在 Pixel 在 Image 平面上 关于 x,y方向 的微分
+	// 微分的数据 -> pixel spacing -> texture antialiasing 抗锯齿算法
     virtual Float GenerateRayDifferential(const CameraSample &sample,
                                           RayDifferential *rd) const;
     virtual Spectrum We(const Ray &ray, Point2f *pRaster2 = nullptr) const;
@@ -71,8 +76,14 @@ class Camera {
 };
 
 struct CameraSample {
+	// the position on the film for which the camera should generate the corresponding ray
+	// film 上的位置
     Point2f pFilm;
+	// for camera models that simulate non-pinhole apertures
+	// ???? 用于非针孔模型的摄像机
     Point2f pLens;
+	// used when rendering scenes with moving objects
+	// 渲染移动物体时用
     Float time;
 };
 
