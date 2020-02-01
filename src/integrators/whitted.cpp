@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -46,19 +46,23 @@ Spectrum WhittedIntegrator::Li(const RayDifferential &ray, const Scene &scene,
                                int depth) const {
     Spectrum L(0.);
     // Find closest ray intersection or return background radiance
+	// 找交点
     SurfaceInteraction isect;
     if (!scene.Intersect(ray, &isect)) {
+		// 如果没有找到 intersection, radiance 可能会因为光源 light source, 比如 天空光照明
         for (const auto &light : scene.lights) L += light->Le(ray);
         return L;
     }
 
     // Compute emitted and reflected light at ray intersection point
+	// 计算该点的 light
 
     // Initialize common variables for Whitted integrator
     const Normal3f &n = isect.shading.n;
     Vector3f wo = isect.wo;
 
     // Compute scattering functions for surface interaction
+	// 计算散射光, 可能需要 内存部分
     isect.ComputeScatteringFunctions(ray, arena);
     if (!isect.bsdf)
         return Li(isect.SpawnRay(ray.d), scene, sampler, arena, depth);

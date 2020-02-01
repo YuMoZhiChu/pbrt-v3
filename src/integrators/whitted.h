@@ -51,6 +51,7 @@ namespace pbrt {
 class WhittedIntegrator : public SamplerIntegrator {
   public:
     // WhittedIntegrator Public Methods
+	// 初始化时传入的 maxDepth 决定了
     WhittedIntegrator(int maxDepth, std::shared_ptr<const Camera> camera,
                       std::shared_ptr<Sampler> sampler,
                       const Bounds2i &pixelBounds)
@@ -60,6 +61,7 @@ class WhittedIntegrator : public SamplerIntegrator {
 
   private:
     // WhittedIntegrator Private Data
+	// max recursion depth 
     const int maxDepth;
 };
 
