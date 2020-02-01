@@ -364,6 +364,10 @@ Spectrum SamplerIntegrator::SpecularReflect(
     Vector3f wo = isect.wo, wi;
     Float pdf;
     BxDFType type = BxDFType(BSDF_REFLECTION | BSDF_SPECULAR);
+	// 传入 outgoing direction 和 light_scatting_mode
+	// 得到 incident direction, 这是 Monte Carlo 的核心步骤
+	// 在这里只是用 BSDF_REFLECTION BSDF_SPECULAR 这2个标签来获得 perfect specular reflection
+	// 这个函数还能 做随机采样, 但这里是 perfect specular reflection 所以方向唯一
     Spectrum f = isect.bsdf->Sample_f(wo, &wi, sampler.Get2D(), &pdf, type);
 
     // Return contribution of specular reflection
@@ -389,7 +393,8 @@ Spectrum SamplerIntegrator::SpecularReflect(
             rd.ryDirection =
                 wi - dwody + 2.f * Vector3f(Dot(wo, ns) * dndy + dDNdy * ns);
         }
-        return f * Li(rd, scene, sampler, arena, depth + 1) * AbsDot(wi, ns) /
+        // 这里是递归计算
+		return f * Li(rd, scene, sampler, arena, depth + 1) * AbsDot(wi, ns) /
                pdf;
     } else
         return Spectrum(0.f);

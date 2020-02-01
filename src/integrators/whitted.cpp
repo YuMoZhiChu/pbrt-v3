@@ -68,6 +68,7 @@ Spectrum WhittedIntegrator::Li(const RayDifferential &ray, const Scene &scene,
         return Li(isect.SpawnRay(ray.d), scene, sampler, arena, depth);
 
     // Compute emitted light if ray hit an area light source
+	// 如果射线命中了自发光的物体, 需要加上自发光的辐射
     L += isect.Le(wo);
 
     // Add contribution of each light source
@@ -75,15 +76,24 @@ Spectrum WhittedIntegrator::Li(const RayDifferential &ray, const Scene &scene,
         Vector3f wi;
         Float pdf;
         VisibilityTester visibility;
+		// 遍历每个光源, 加上辐射
+		// wi 作为引用, 会在调用中被修改
+		// visibility VisibiltyTester 用于描述该射线是否被遮挡，判断 a point being shaded 和 light is clear? 做法是 shadow ray
+		// pdf 是概率密度, 对于一个点有多个区域光源到达该点，但我们只做一个方向的采样，在简单的例子中, 就是 1.0f
         Spectrum Li =
             light->Sample_Li(isect, sampler.Get2D(), &wi, &pdf, &visibility);
+		// 判断 Li 是否透光 如果计算的结果都是 0, 就没有必要做 shadow ray 计算
         if (Li.IsBlack() || pdf == 0) continue;
         Spectrum f = isect.bsdf->f(wo, wi);
+		// f: bsdf 参数
+		// AbsDot: cos 角度
+		// pdf: 除以 概率密度
         if (!f.IsBlack() && visibility.Unoccluded(scene))
             L += f * Li * AbsDot(wi, n) / pdf;
     }
     if (depth + 1 < maxDepth) {
         // Trace rays for specular reflection and refraction
+		// 计算镜面反射 和 透射(丁达尔效应)
         L += SpecularReflect(ray, isect, scene, sampler, arena, depth);
         L += SpecularTransmit(ray, isect, scene, sampler, arena, depth);
     }
