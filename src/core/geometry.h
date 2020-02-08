@@ -62,6 +62,7 @@ class Vector2 {
     Vector2() { x = y = 0; }
     Vector2(T xx, T yy) : x(xx), y(yy) { DCHECK(!HasNaNs()); }
     bool HasNaNs() const { return isNaN(x) || isNaN(y); }
+	// explicit 只能修饰构造函数, 禁止隐式转换, Vector2 a = Point2(1, 1) 会报错
     explicit Vector2(const Point2<T> &p);
     explicit Vector2(const Point3<T> &p);
 #ifndef NDEBUG
@@ -133,6 +134,7 @@ class Vector2 {
     }
     Vector2<T> operator-() const { return Vector2<T>(-x, -y); }
     T operator[](int i) const {
+		// ???? 这里打个断点, 基本都是下面的引用, 看看有什么地方用到这个
         DCHECK(i >= 0 && i <= 1);
         if (i == 0) return x;
         return y;
@@ -834,6 +836,7 @@ typedef Bounds2<int> Bounds2i;
 typedef Bounds3<Float> Bounds3f;
 typedef Bounds3<int> Bounds3i;
 
+// 迭代器的写法, 实现这个类就能使用 for(Point2i p : b) 的操作
 class Bounds2iIterator : public std::forward_iterator_tag {
   public:
     Bounds2iIterator(const Bounds2i &b, const Point2i &pt)
@@ -869,6 +872,7 @@ class Bounds2iIterator : public std::forward_iterator_tag {
 };
 
 // Ray Declarations
+// r = o + td
 class Ray {
   public:
     // Ray Public Methods
@@ -887,8 +891,11 @@ class Ray {
     // Ray Public Data
     Point3f o;
     Vector3f d;
+	// mutable 突破const 的限制, 在一些const函数中, 这个变量是可以修改的
     mutable Float tMax;
+	// ???? 这个time的用处, 用于渲染 animated objects?
     Float time;
+	// 起点的介质, 比如雾,散射的液体 等
     const Medium *medium;
 };
 
@@ -1019,6 +1026,7 @@ Vector3<T> Permute(const Vector3<T> &v, int x, int y, int z) {
     return Vector3<T>(v[x], v[y], v[z]);
 }
 
+// 构建正交坐标系
 template <typename T>
 inline void CoordinateSystem(const Vector3<T> &v1, Vector3<T> *v2,
                              Vector3<T> *v3) {
@@ -1041,6 +1049,7 @@ Vector2<T>::Vector2(const Point3<T> &p)
     DCHECK(!HasNaNs());
 }
 
+// f * v 的模式, 相当于调用 v * f, 相当于 v.operator*(f)
 template <typename T, typename U>
 inline Vector2<T> operator*(U f, const Vector2<T> &v) {
     return v * f;

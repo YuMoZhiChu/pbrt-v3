@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -45,10 +45,14 @@
 #include "quaternion.h"
 
 namespace pbrt {
+// 在pbrt代码中, 不会显示的使用 齐次坐标, 但在逻辑的实现上
+// 笛卡尔坐标 -> 齐次坐标 -> 逻辑运算 -> 笛卡尔坐标
+// Transform 的内存消耗很大 在 Shapes 中使用 Transform * , 在 scene 中使用 TransformCache, 来避免消耗
 
 // Matrix4x4 Declarations
 struct Matrix4x4 {
     // Matrix4x4 Public Methods
+	// 默认是 I 矩阵
     Matrix4x4() {
         m[0][0] = m[1][1] = m[2][2] = m[3][3] = 1.f;
         m[0][1] = m[0][2] = m[0][3] = m[1][0] = m[1][2] = m[1][3] = m[2][0] =
