@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -236,6 +236,7 @@ Transform LookAt(const Point3f &pos, const Point3f &look, const Vector3f &up) {
 }
 
 Bounds3f Transform::operator()(const Bounds3f &b) const {
+	// 遍历的做法实现 边界的Transform
     const Transform &M = *this;
     Bounds3f ret(M(Point3f(b.pMin.x, b.pMin.y, b.pMin.z)));
     ret = Union(ret, M(Point3f(b.pMax.x, b.pMin.y, b.pMin.z)));
@@ -253,6 +254,7 @@ Transform Transform::operator*(const Transform &t2) const {
 }
 
 bool Transform::SwapsHandedness() const {
+	// ???? 为什么秩小于0就变换了手系
     Float det = m.m[0][0] * (m.m[1][1] * m.m[2][2] - m.m[1][2] * m.m[2][1]) -
                 m.m[0][1] * (m.m[1][0] * m.m[2][2] - m.m[1][2] * m.m[2][0]) +
                 m.m[0][2] * (m.m[1][0] * m.m[2][1] - m.m[1][1] * m.m[2][0]);
@@ -1103,11 +1105,13 @@ AnimatedTransform::AnimatedTransform(const Transform *startTransform,
 void AnimatedTransform::Decompose(const Matrix4x4 &m, Vector3f *T,
                                   Quaternion *Rquat, Matrix4x4 *S) {
     // Extract translation _T_ from transformation matrix
+	// 位移向量最为简单
     T->x = m.m[0][3];
     T->y = m.m[1][3];
     T->z = m.m[2][3];
 
     // Compute new transformation matrix _M_ without translation
+	// 构建
     Matrix4x4 M = m;
     for (int i = 0; i < 3; ++i) M.m[i][3] = M.m[3][i] = 0.f;
     M.m[3][3] = 1.f;

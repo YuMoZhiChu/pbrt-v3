@@ -222,6 +222,8 @@ bool SolveLinearSystem2x2(const Float A[2][2], const Float B[2], Float *x0,
                           Float *x1);
 
 // Transform Inline Functions
+
+// Matrix M * Point[x, y, z, 1]^t
 template <typename T>
 inline Point3<T> Transform::operator()(const Point3<T> &p) const {
     T x = p.x, y = p.y, z = p.z;
@@ -288,6 +290,7 @@ inline Point3<T> Transform::operator()(const Point3<T> &p,
     T zp = (m.m[2][0] * x + m.m[2][1] * y) + (m.m[2][2] * z + m.m[2][3]);
     T wp = (m.m[3][0] * x + m.m[3][1] * y) + (m.m[3][2] * z + m.m[3][3]);
 
+	// ???? 跟误差相关的计算, 现在完全不理解
     // Compute absolute error for transformed point
     T xAbsSum = (std::abs(m.m[0][0] * x) + std::abs(m.m[0][1] * y) +
                  std::abs(m.m[0][2] * z) + std::abs(m.m[0][3]));

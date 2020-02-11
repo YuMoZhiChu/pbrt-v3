@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -55,10 +55,12 @@ Transform Quaternion::ToTransform() const {
     m.m[2][2] = 1 - 2 * (xx + yy);
 
     // Transpose since we are left-handed.  Ugh.
+	// 四元数矩阵是 正交矩阵
     return Transform(Transpose(m), m);
 }
 
 Quaternion::Quaternion(const Transform &t) {
+	// ???? 四元数转矩阵 暂时跳过
     const Matrix4x4 &m = t.m;
     Float trace = m.m[0][0] + m.m[1][1] + m.m[2][2];
     if (trace > 0.f) {
@@ -93,6 +95,7 @@ Quaternion::Quaternion(const Transform &t) {
 
 Quaternion Slerp(Float t, const Quaternion &q1, const Quaternion &q2) {
     Float cosTheta = Dot(q1, q2);
+	// 如果2个四元数几乎平行, 就用线性插值来避免 sin 和 cos 引起的数据误差
     if (cosTheta > .9995f)
         return Normalize((1 - t) * q1 + t * q2);
     else {
