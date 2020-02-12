@@ -443,6 +443,7 @@ class AnimatedTransform {
     Quaternion R[2];
     Matrix4x4 S[2];
     bool hasRotation;
+	// 导数项
     struct DerivativeTerm {
         DerivativeTerm() {}
         DerivativeTerm(Float c, Float x, Float y, Float z)

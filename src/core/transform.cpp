@@ -365,6 +365,7 @@ void IntervalFindZeros(Float c1, Float c2, Float c3, Float c4, Float c5,
     if (range.low > 0. || range.high < 0. || range.low == range.high) return;
     if (depth > 0) {
         // Split _tInterval_ and check both resulting intervals
+		// 2分法寻找0点
         Float mid = (tInterval.low + tInterval.high) * 0.5f;
         IntervalFindZeros(c1, c2, c3, c4, c5, theta,
                           Interval(tInterval.low, mid), zeros, zeroCount,
@@ -374,6 +375,7 @@ void IntervalFindZeros(Float c1, Float c2, Float c3, Float c4, Float c5,
                           depth - 1);
     } else {
         // Use Newton's method to refine zero
+		// 找到0点并用数学公式计算
         Float tNewton = (tInterval.low + tInterval.high) * 0.5f;
         for (int i = 0; i < 4; ++i) {
             Float fNewton =
@@ -409,9 +411,12 @@ AnimatedTransform::AnimatedTransform(const Transform *startTransform,
     Decompose(startTransform->m, &T[0], &R[0], &S[0]);
     Decompose(endTransform->m, &T[1], &R[1], &S[1]);
     // Flip _R[1]_ if needed to select shortest path
+	// 对于任何旋转矩阵, 都有2个四元数与之对应, 只是符号不同
+	// 如果需要选择更短的插值, 那么他们的点乘为负数(不同向), 我们可以把一个四元数做翻转(flip)
     if (Dot(R[0], R[1]) < 0) R[1] = -R[1];
     hasRotation = Dot(R[0], R[1]) < 0.9995f;
     // Compute terms of motion derivative function
+	// 计算运动函数的导数的项
     if (hasRotation) {
         Float cosTheta = Dot(R[0], R[1]);
         Float theta = std::acos(Clamp(cosTheta, -1, 1));
@@ -1111,12 +1116,14 @@ void AnimatedTransform::Decompose(const Matrix4x4 &m, Vector3f *T,
     T->z = m.m[2][3];
 
     // Compute new transformation matrix _M_ without translation
-	// 构建
+	// 构建4X4 矩阵
     Matrix4x4 M = m;
     for (int i = 0; i < 3; ++i) M.m[i][3] = M.m[3][i] = 0.f;
     M.m[3][3] = 1.f;
 
     // Extract rotation _R_ from transformation matrix
+	// 矩阵的极性分解 https://research.cs.wisc.edu/graphics/Courses/838-s2002/Papers/polar-decomp.pdf
+	// 这个方法能快速将当前矩阵收敛到 纯粹的旋转矩阵
     Float norm;
     int count = 0;
     Matrix4x4 R = M;
@@ -1142,6 +1149,7 @@ void AnimatedTransform::Decompose(const Matrix4x4 &m, Vector3f *T,
     *Rquat = Quaternion(R);
 
     // Compute scale _S_ using rotation and original matrix
+	// 缩放信息在M中, 得到的R矩阵是 纯粹旋转(Pure Rotation) 所以做简单运算即可
     *S = Matrix4x4::Mul(Inverse(R), M);
 }
 
@@ -1216,11 +1224,15 @@ Vector3f AnimatedTransform::operator()(Float time, const Vector3f &v) const {
     return t(v);
 }
 
+// 该函数是计算 在变化中的 Transform, Bounds3f 有怎样的改变
+// 1. bound 是用 Union 计算的, 所以它算出的结果是在这一段时间内, bound 的变化范围, 并把这个变化范围扩大
 Bounds3f AnimatedTransform::MotionBounds(const Bounds3f &b) const {
     if (!actuallyAnimated) return (*startTransform)(b);
+	// 如果 M=TRS 中, 没有 R 矩阵, 那么取起点和终点
     if (hasRotation == false)
         return Union((*startTransform)(b), (*endTransform)(b));
     // Return motion bounds accounting for animated rotation
+	// 遍历8个顶点
     Bounds3f bounds;
     for (int corner = 0; corner < 8; ++corner)
         bounds = Union(bounds, BoundPointMotion(b.Corner(corner)));
@@ -1234,6 +1246,7 @@ Bounds3f AnimatedTransform::BoundPointMotion(const Point3f &p) const {
     Float theta = std::acos(Clamp(cosTheta, -1, 1));
     for (int c = 0; c < 3; ++c) {
         // Find any motion derivative zeros for the component _c_
+		// 寻找运动导数的0点
         Float zeros[8];
         int nZeros = 0;
         IntervalFindZeros(c1[c].Eval(p), c2[c].Eval(p), c3[c].Eval(p),
@@ -1242,6 +1255,7 @@ Bounds3f AnimatedTransform::BoundPointMotion(const Point3f &p) const {
         CHECK_LE(nZeros, sizeof(zeros) / sizeof(zeros[0]));
 
         // Expand bounding box for any motion derivative zeros found
+		// 在找到0点的情况下, 拓展极值, 重新刷新范围
         for (int i = 0; i < nZeros; ++i) {
             Point3f pz = (*this)(Lerp(zeros[i], startTime, endTime), p);
             bounds = Union(bounds, pz);
