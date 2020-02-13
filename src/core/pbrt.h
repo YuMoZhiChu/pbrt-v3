@@ -287,6 +287,7 @@ inline double NextFloatDown(double v, int delta = 1) {
     return BitsToFloat(ui);
 }
 
+// ???? 极小值 Epsilon 的处理, 但为什么要这么处理极小值, 有点没搞明白
 inline Float gamma(int n) {
     return (n * MachineEpsilon) / (1 - n * MachineEpsilon);
 }

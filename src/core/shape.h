@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -48,17 +48,28 @@
 namespace pbrt {
 
 // Shape Declarations
+// Sideness 说明: pbrt 中没有去做剪切物体的背面, 虽然剪切背面能优化渲染, 但 Ray-Intersect 逻辑会在设置正背面之前常常调用, 因此没必要
 class Shape {
   public:
     // Shape Interface
     Shape(const Transform *ObjectToWorld, const Transform *WorldToObject,
           bool reverseOrientation);
     virtual ~Shape();
+	// 返回该 Shape 的范围, 在本地坐标系
     virtual Bounds3f ObjectBound() const = 0;
+	// 返回该 Shape 的范围, 在世界坐标系
     virtual Bounds3f WorldBound() const;
+	// 纯虚函数, 但是子类应该提供与射线的交点 Interaction 以及 tHit
+	// 该函数的注意点:
+	// 1. Ray中包含 Ray::tMax 来表示末端, 在 t > tMax 的情况下, 这一次的 Interaction 需要被忽略
+	// 2. tHit 用于储存 Intereaction 对应的 Ray 的 t值, 在多个交点的情况下, 存储最近的一个
+	// 3. isect 用于储存 SurfaceInteraction, 表面交点
+	// 4. 传入的 Ray 是在 世界坐标系中表示, Shape中的计算会把他们转换到 本地坐标系, 返回的 Interaction 信息则是世界坐标系的
+	// 5. testAlphaTexture 表示是否采用: 使用一些纹理来切掉 Shape 的部分表面
     virtual bool Intersect(const Ray &ray, Float *tHit,
                            SurfaceInteraction *isect,
                            bool testAlphaTexture = true) const = 0;
+	// 相比于 Intersect, 这个不需要计算 tHit, isect 是一个简化版本
     virtual bool IntersectP(const Ray &ray,
                             bool testAlphaTexture = true) const {
         return Intersect(ray, nullptr, nullptr, testAlphaTexture);
@@ -83,8 +94,11 @@ class Shape {
     virtual Float SolidAngle(const Point3f &p, int nSamples = 512) const;
 
     // Shape Public Data
+	// Shape 定位在对象空间中, 所有Shape都定义在本地坐标系中, 提供2个矩阵支持相应的变化
     const Transform *ObjectToWorld, *WorldToObject;
+	// 该参数表示Shape 的 Normal 是否翻转, 对于自发光的物体, 这个参数会影响光照的发射方向
     const bool reverseOrientation;
+	// 是否因为 transform 而改变了手系, 这个参数会在构造函数中做计算并保存
     const bool transformSwapsHandedness;
 };
 

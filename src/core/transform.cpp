@@ -261,6 +261,7 @@ bool Transform::SwapsHandedness() const {
     return det < 0;
 }
 
+// 表面交点的 transfrom, 有些信息会保留, 有些需要做 Transform
 SurfaceInteraction Transform::operator()(const SurfaceInteraction &si) const {
     SurfaceInteraction ret;
     // Transform _p_ and _pError_ in _SurfaceInteraction_

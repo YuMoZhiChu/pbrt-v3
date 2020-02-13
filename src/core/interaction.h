@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -94,9 +94,14 @@ struct Interaction {
     // Interaction Public Data
     Point3f p;
     Float time;
+	// 在Ray计算交点中出现的浮点数误差, 会在这里进行处理
     Vector3f pError;
+	// 对于用Ray计算入射视线的反方向, 标记为 W0, 也是 outgoing direction when computing lighting at points (出射光)
+	// 其他情况的交点, 该值为0
     Vector3f wo;
+	// 如果是 Surface Interaction， 会带有法线信息
     Normal3f n;
+	// 介质信息, 比如水,带有雾的空气
     MediumInterface mediumInterface;
 };
 
@@ -135,10 +140,15 @@ class SurfaceInteraction : public Interaction {
     Spectrum Le(const Vector3f &w) const;
 
     // SurfaceInteraction Public Data
+	// uv 坐标
     Point2f uv;
+	// 点对u,v 的微分
     Vector3f dpdu, dpdv;
+	// 法线对u,v 的微分
     Normal3f dndu, dndv;
     const Shape *shape = nullptr;
+	// 保存表面法线和各种偏导数的第二个实例
+	// 可以对这部分的数据做进一步的修改, 同时也保留原始值
     struct {
         Normal3f n;
         Vector3f dpdu, dpdv;

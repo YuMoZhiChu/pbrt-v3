@@ -1402,7 +1402,8 @@ inline bool Bounds3<T>::IntersectP(const Ray &ray, Float *hitt0,
     Float t0 = 0, t1 = ray.tMax;
     for (int i = 0; i < 3; ++i) {
         // Update interval for _i_th bounding box slab
-        Float invRayDir = 1 / ray.d[i];
+		// ray.o + tNear/tFar * ray.d = pMin[i]/pMax[i] 用公式做反推
+        Float invRayDir = 1 / ray.d[i]; // 先算倒数再相乘的优化除法, 如果这里有0做分母, 计算出来的结果是 tNera = 负无穷, tFar = 正无穷
         Float tNear = (pMin[i] - ray.o[i]) * invRayDir;
         Float tFar = (pMax[i] - ray.o[i]) * invRayDir;
 
@@ -1410,7 +1411,10 @@ inline bool Bounds3<T>::IntersectP(const Ray &ray, Float *hitt0,
         if (tNear > tFar) std::swap(tNear, tFar);
 
         // Update _tFar_ to ensure robust ray--bounds intersection
+		// 这里的语法是 tFar = tFar * 1 + 2 * gamma(3), 加上一个极小值后, 能够处理射线 Ray 和某一个边界平行, 且顶点在边界上的情况
+		// 对 tFar 加上一个极小值
         tFar *= 1 + 2 * gamma(3);
+		// 取更接近的区间
         t0 = tNear > t0 ? tNear : t0;
         t1 = tFar < t1 ? tFar : t1;
         if (t0 > t1) return false;
@@ -1420,6 +1424,9 @@ inline bool Bounds3<T>::IntersectP(const Ray &ray, Float *hitt0,
     return true;
 }
 
+// invDir : 预先算好的 dir 的倒数
+// dirIsNeg : 预先计算的 dir 在 xyz 轴上的方向, 因为在坐标轴上的方向如果为负, 那么 t_aix_Min 和 t_aix_Max 他们的大小关系会互换
+// 该函数是 IntersectP 的优化版, 需要预先对 ray中的 d 做分析处理, 但是性能结构上来看, 是有所优化的
 template <typename T>
 inline bool Bounds3<T>::IntersectP(const Ray &ray, const Vector3f &invDir,
                                    const int dirIsNeg[3]) const {

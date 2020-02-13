@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -63,6 +63,9 @@ SurfaceInteraction::SurfaceInteraction(
     shading.dndv = dndv;
 
     // Adjust normal based on orientation and handedness
+	// 1. 如果shape本身需要flip法线 做filp
+	// 2. 如果shape的变化改变了手系(从左手系改变到了右手系)
+	// 用亦或来完成输出
     if (shape &&
         (shape->reverseOrientation ^ shape->transformSwapsHandedness)) {
         n *= -1;
@@ -77,6 +80,13 @@ void SurfaceInteraction::SetShadingGeometry(const Vector3f &dpdus,
                                             bool orientationIsAuthoritative) {
     // Compute _shading.n_ for _SurfaceInteraction_
     shading.n = Normalize((Normal3f)Cross(dpdus, dpdvs));
+	// 这里貌似少了一段代码
+    /*if (shape &&
+        (shape->reverseOrientation ^ shape->transformSwapsHandedness)) {
+        n *= -1;
+        shading.n *= -1;
+    }*/
+	// 处理同向, 将 shading 存储的法线 和 n 设置在同一个半球内
     if (orientationIsAuthoritative)
         n = Faceforward(n, shading.n);
     else
