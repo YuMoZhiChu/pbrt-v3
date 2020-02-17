@@ -52,6 +52,7 @@ bool Sphere::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
     Float phi;
     Point3f pHit;
     // Transform _Ray_ to object space
+	// 转换到 本地坐标系
     Vector3f oErr, dErr;
     Ray ray = (*WorldToObject)(r, &oErr, &dErr);
 
@@ -65,10 +66,12 @@ bool Sphere::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
     EFloat c = ox * ox + oy * oy + oz * oz - EFloat(radius) * EFloat(radius);
 
     // Solve quadratic equation for _t_ values
+	// 一元二次方程求解
     EFloat t0, t1;
     if (!Quadratic(a, b, c, &t0, &t1)) return false;
 
     // Check quadric shape _t0_ and _t1_ for nearest intersection
+    // 选出正确的 t, tShapeHit 应该是 t0 t1 中较小的一个
     if (t0.UpperBound() > ray.tMax || t1.LowerBound() <= 0) return false;
     EFloat tShapeHit = t0;
     if (tShapeHit.LowerBound() <= 0) {
@@ -77,15 +80,19 @@ bool Sphere::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
     }
 
     // Compute sphere hit position and $\phi$
+    // 计算 交点位置
     pHit = ray((Float)tShapeHit);
 
     // Refine sphere intersection point
     pHit *= radius / Distance(pHit, Point3f(0, 0, 0));
+    // x的精度计算
     if (pHit.x == 0 && pHit.y == 0) pHit.x = 1e-5f * radius;
-    phi = std::atan2(pHit.y, pHit.x);
+    // 算出 xy 平面的 phi 角度
+	phi = std::atan2(pHit.y, pHit.x);
     if (phi < 0) phi += 2 * Pi;
 
     // Test sphere intersection against clipping parameters
+    // 范围测试, 如果不在范围内就没有交点
     if ((zMin > -radius && pHit.z < zMin) || (zMax < radius && pHit.z > zMax) ||
         phi > phiMax) {
         if (tShapeHit == t1) return false;
@@ -110,6 +117,7 @@ bool Sphere::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
     Float v = (theta - thetaMin) / (thetaMax - thetaMin);
 
     // Compute sphere $\dpdu$ and $\dpdv$
+	// 计算 p 对 uv 的导数
     Float zRadius = std::sqrt(pHit.x * pHit.x + pHit.y * pHit.y);
     Float invZRadius = 1 / zRadius;
     Float cosPhi = pHit.x * invZRadius;
@@ -120,6 +128,8 @@ bool Sphere::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
         Vector3f(pHit.z * cosPhi, pHit.z * sinPhi, -radius * std::sin(theta));
 
     // Compute sphere $\dndu$ and $\dndv$
+    // 计算 n 对 uv 的导数
+	// 使用了 Weingarten equations 这个数学公式
     Vector3f d2Pduu = -phiMax * phiMax * Vector3f(pHit.x, pHit.y, 0);
     Vector3f d2Pduv =
         (thetaMax - thetaMin) * pHit.z * phiMax * Vector3f(-sinPhi, cosPhi, 0.);
@@ -146,11 +156,14 @@ bool Sphere::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
     Vector3f pError = gamma(5) * Abs((Vector3f)pHit);
 
     // Initialize _SurfaceInteraction_ from parametric information
+	// Point2f(u, v) 是在这个 obj 上, 该交点的 uv 坐标
     *isect = (*ObjectToWorld)(SurfaceInteraction(pHit, pError, Point2f(u, v),
                                                  -ray.d, dpdu, dpdv, dndu, dndv,
                                                  ray.time, this));
 
     // Update _tHit_ for quadric intersection
+    // 虽然转换到了 本地坐标系, 但因为没有对 Ray 的 d 向量做处理, 所以可以直接赋值
+	// 注意, 如果在运算流程中, 对 d 做了 Normalize 等可能改变长度的操作, 这个参数变量 t 就会不正确
     *tHit = (Float)tShapeHit;
     return true;
 }
@@ -177,6 +190,7 @@ bool Sphere::IntersectP(const Ray &r, bool testAlphaTexture) const {
     if (!Quadratic(a, b, c, &t0, &t1)) return false;
 
     // Check quadric shape _t0_ and _t1_ for nearest intersection
+	// 选出正确的 t, tShapeHit 应该是 t0 t1 中较小的一个
     if (t0.UpperBound() > ray.tMax || t1.LowerBound() <= 0) return false;
     EFloat tShapeHit = t0;
     if (tShapeHit.LowerBound() <= 0) {
@@ -185,15 +199,20 @@ bool Sphere::IntersectP(const Ray &r, bool testAlphaTexture) const {
     }
 
     // Compute sphere hit position and $\phi$
+	// 计算 交点位置
     pHit = ray((Float)tShapeHit);
 
     // Refine sphere intersection point
+	// 将交点缩放成 长度恰好为 radius 的向量
     pHit *= radius / Distance(pHit, Point3f(0, 0, 0));
+	// x的精度计算
     if (pHit.x == 0 && pHit.y == 0) pHit.x = 1e-5f * radius;
+	// 算出 xy 平面的 phi 角度
     phi = std::atan2(pHit.y, pHit.x);
     if (phi < 0) phi += 2 * Pi;
 
     // Test sphere intersection against clipping parameters
+	// 范围测试, 如果不在范围内
     if ((zMin > -radius && pHit.z < zMin) || (zMax < radius && pHit.z > zMax) ||
         phi > phiMax) {
         if (tShapeHit == t1) return false;

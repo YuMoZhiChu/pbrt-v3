@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -55,17 +55,20 @@ bool Disk::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
     // Compute plane intersection for disk
 
     // Reject disk intersections for rays parallel to the disk's plane
+	// 如果 disk 和 ray 平行, 那么不会有交点
     if (ray.d.z == 0) return false;
     Float tShapeHit = (height - ray.o.z) / ray.d.z;
     if (tShapeHit <= 0 || tShapeHit >= ray.tMax) return false;
 
     // See if hit point is inside disk radii and $\phimax$
+	// pHit 现在是 Ray 和 平面的交点, 先算长度是否在 (radius,  innerRadius) 内
     Point3f pHit = ray(tShapeHit);
     Float dist2 = pHit.x * pHit.x + pHit.y * pHit.y;
     if (dist2 > radius * radius || dist2 < innerRadius * innerRadius)
         return false;
 
     // Test disk $\phi$ value against $\phimax$
+	// 算角度是否 在 [0, phiMax] 内
     Float phi = std::atan2(pHit.y, pHit.x);
     if (phi < 0) phi += 2 * Pi;
     if (phi > phiMax) return false;
@@ -75,6 +78,7 @@ bool Disk::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
     Float rHit = std::sqrt(dist2);
     Float v = (radius - rHit) / (radius - innerRadius);
     Vector3f dpdu(-phiMax * pHit.y, phiMax * pHit.x, 0);
+	// dpxdv 的结果是 (ri-r)*cos phi 这里的 cos phi = pHit.x/rHit 来表示, y 同理
     Vector3f dpdv =
         Vector3f(pHit.x, pHit.y, 0.) * (innerRadius - radius) / rHit;
     Normal3f dndu(0, 0, 0), dndv(0, 0, 0);
