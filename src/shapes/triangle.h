@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -48,8 +48,18 @@ namespace pbrt {
 STAT_MEMORY_COUNTER("Memory/Triangle meshes", triMeshBytes);
 
 // Triangle Declarations
+// Triangle Mesh 这个表示一整块三角形网格, 可以由高级的图形细分而来
 struct TriangleMesh {
     // TriangleMesh Public Methods
+	// ObjectToWorld 转换坐标系矩阵
+	// nTriangles 这个mesh 的 三角形的总个数
+	// vertexIndices 指向顶点下表数组 的 指针, 对于第 i 个三角形, 他们的顶点是 P[vertexIndices[3*i + 0,1,2]]
+	// nVertices  这个mesh 的 顶点的总个数
+	// P   有nVertices个 Point3f 的数组
+	// S   tangent 向量,一个顶点一个, 用于计算着色切线
+	// N   normal  向量,一个顶点一个, 如果存在, 他们会在三角形的面上做插值, 并计算着色发现
+	// UV  该点的uv值
+	// alphaMask alpha值, 用于裁剪部分三角形
     TriangleMesh(const Transform &ObjectToWorld, int nTriangles,
                  const int *vertexIndices, int nVertices, const Point3f *P,
                  const Vector3f *S, const Normal3f *N, const Point2f *uv,

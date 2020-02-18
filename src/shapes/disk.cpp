@@ -81,6 +81,7 @@ bool Disk::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
 	// dpxdv 的结果是 (ri-r)*cos phi 这里的 cos phi = pHit.x/rHit 来表示, y 同理
     Vector3f dpdv =
         Vector3f(pHit.x, pHit.y, 0.) * (innerRadius - radius) / rHit;
+	// 因为 disk 的法线是 (0, 0, 1) 它对 uv 的导数就都是 0,0,0
     Normal3f dndu(0, 0, 0), dndv(0, 0, 0);
 
     // Refine disk intersection point

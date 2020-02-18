@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -74,12 +74,14 @@ TriangleMesh::TriangleMesh(
     for (int i = 0; i < nVertices; ++i) p[i] = ObjectToWorld(P[i]);
 
     // Copy _UV_, _N_, and _S_ vertex data, if present
+	// 这里使用到的 ObjectToWorld 的运算, 都是矩阵针对 点, 法线, 向量 各自不同的运算
     if (UV) {
         uv.reset(new Point2f[nVertices]);
         memcpy(uv.get(), UV, nVertices * sizeof(Point2f));
     }
     if (N) {
         n.reset(new Normal3f[nVertices]);
+		// 这里的法线处理 是乘上转置的逆
         for (int i = 0; i < nVertices; ++i) n[i] = ObjectToWorld(N[i]);
     }
     if (S) {
