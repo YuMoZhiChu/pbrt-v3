@@ -70,6 +70,7 @@ TriangleMesh::TriangleMesh(
                                  (fIndices ? sizeof(*fIndices) : 0));
 
     // Transform mesh vertices to world space
+	// 这里使用的是在 世界坐标, 目的是避免一些矩阵变换的计算
     p.reset(new Point3f[nVertices]);
     for (int i = 0; i < nVertices; ++i) p[i] = ObjectToWorld(P[i]);
 
@@ -100,11 +101,13 @@ std::vector<std::shared_ptr<Shape>> CreateTriangleMesh(
     const Point2f *uv, const std::shared_ptr<Texture<Float>> &alphaMask,
     const std::shared_ptr<Texture<Float>> &shadowAlphaMask,
     const int *faceIndices) {
+	// 先创建mesh, 这个mesh包含了所有的三角形信息
     std::shared_ptr<TriangleMesh> mesh = std::make_shared<TriangleMesh>(
         *ObjectToWorld, nTriangles, vertexIndices, nVertices, p, s, n, uv,
         alphaMask, shadowAlphaMask, faceIndices);
     std::vector<std::shared_ptr<Shape>> tris;
     tris.reserve(nTriangles);
+	// 每三角形的实例化, 再压入数组中
     for (int i = 0; i < nTriangles; ++i)
         tris.push_back(std::make_shared<Triangle>(ObjectToWorld, WorldToObject,
                                                   reverseOrientation, mesh, i));
@@ -179,6 +182,7 @@ Bounds3f Triangle::ObjectBound() const {
                  (*WorldToObject)(p2));
 }
 
+// 这里直接使用 world bound 会更好, 因为三角形是一个在转换后再求边界，效果会更好
 Bounds3f Triangle::WorldBound() const {
     // Get triangle vertices in _p0_, _p1_, and _p2_
     const Point3f &p0 = mesh->p[v[0]];
@@ -191,6 +195,7 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
                          bool testAlphaTexture) const {
     ProfilePhase p(Prof::TriIntersect);
     ++nTests;
+	// 获取三个顶点
     // Get triangle vertices in _p0_, _p1_, and _p2_
     const Point3f &p0 = mesh->p[v[0]];
     const Point3f &p1 = mesh->p[v[1]];
@@ -199,13 +204,16 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
     // Perform ray--triangle intersection test
 
     // Transform triangle vertices to ray coordinate space
+	// 这里是一个新的坐标系  叫做 射线坐标系, 尽量以射线的信息来构建相对简单的坐标系
 
     // Translate vertices based on ray origin
+	// 将三个顶点转换为原点在 R.O 的坐标系中
     Point3f p0t = p0 - Vector3f(ray.o);
     Point3f p1t = p1 - Vector3f(ray.o);
     Point3f p2t = p2 - Vector3f(ray.o);
 
     // Permute components of triangle vertices and ray direction
+	// 对三角形的顶点，和 方向 d, 他们的xyz 进行重排序, 目的是 让 z 最大
     int kz = MaxDimension(Abs(ray.d));
     int kx = kz + 1;
     if (kx == 3) kx = 0;
@@ -217,6 +225,7 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
     p2t = Permute(p2t, kx, ky, kz);
 
     // Apply shear transformation to translated vertex positions
+	// 为了把坐标系，定位 z 轴方向是 d, 长度恰好是 d 的长度, 做一次 剪切变换
     Float Sx = -d.x / d.z;
     Float Sy = -d.y / d.z;
     Float Sz = 1.f / d.z;
@@ -228,11 +237,13 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
     p2t.y += Sy * p2t.z;
 
     // Compute edge function coefficients _e0_, _e1_, and _e2_
+	// 计算边的权重, 这里是用三角形的三条边, 相对于 原点, 算出的叉乘面积(带符号
     Float e0 = p1t.x * p2t.y - p1t.y * p2t.x;
     Float e1 = p2t.x * p0t.y - p2t.y * p0t.x;
     Float e2 = p0t.x * p1t.y - p0t.y * p1t.x;
 
     // Fall back to double precision test at triangle edges
+	// 这里是怕精度不够, 再算一遍
     if (sizeof(Float) == sizeof(float) &&
         (e0 == 0.0f || e1 == 0.0f || e2 == 0.0f)) {
         double p2txp1ty = (double)p2t.x * (double)p1t.y;
@@ -247,27 +258,34 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
     }
 
     // Perform triangle edge and determinant tests
+	// 如果原点相对于 3条边 都是 一个符号, 说明不会有交点
     if ((e0 < 0 || e1 < 0 || e2 < 0) && (e0 > 0 || e1 > 0 || e2 > 0))
         return false;
     Float det = e0 + e1 + e2;
-    if (det == 0) return false;
+    // 如果恰好和为 0, 说明 光线 d 沿着三角形的某条边，而且情况应该是 某一个 e 为0, 另外2个 e 为相反数
+	if (det == 0) return false;
 
     // Compute scaled hit distance to triangle and test against ray $t$ range
+
+	// 先乘上裁剪矩阵, 把位置变换到 Ray坐标系
     p0t.z *= Sz;
     p1t.z *= Sz;
     p2t.z *= Sz;
     Float tScaled = e0 * p0t.z + e1 * p1t.z + e2 * p2t.z;
+	// det 是 e0 + e1 + e2 , 这里的插值 是用重心的方法做的插值???? 为什么用重心做,不懂 得到的 tScaled
+	// 这里是判断范围
     if (det < 0 && (tScaled >= 0 || tScaled < ray.tMax * det))
         return false;
     else if (det > 0 && (tScaled <= 0 || tScaled > ray.tMax * det))
         return false;
 
     // Compute barycentric coordinates and $t$ value for triangle intersection
+	// 计算出 Ray交点的t值, 上面是一个范围判断
     Float invDet = 1 / det;
     Float b0 = e0 * invDet;
     Float b1 = e1 * invDet;
     Float b2 = e2 * invDet;
-    Float t = tScaled * invDet;
+    Float t = tScaled * invDet; // 得到 t
 
     // Ensure that computed triangle $t$ is conservatively greater than zero
 
@@ -293,6 +311,7 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
     if (t <= deltaT) return false;
 
     // Compute triangle partial derivatives
+	// 计算偏导数, 虽然三角形上的偏导数不会变，但是不做存储，节省内存空间
     Vector3f dpdu, dpdv;
     Point2f uv[3];
     GetUVs(uv);

@@ -118,6 +118,7 @@ class Triangle : public Shape {
     }
 
     // Triangle Private Data
+	// 三角形会直接存在 Mesh 上, 挂个指针, 挂个第一个顶点位置就好
     std::shared_ptr<TriangleMesh> mesh;
     const int *v;
     int faceIndex;
