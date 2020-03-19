@@ -105,6 +105,7 @@ class Triangle : public Shape {
 
   private:
     // Triangle Private Methods
+	// 获取三角形中的 uv 值, 或者直接是用默认的 uv (0,0) (1,0) (1,1)
     void GetUVs(Point2f uv[3]) const {
         if (mesh->uv) {
             uv[0] = mesh->uv[v[0]];

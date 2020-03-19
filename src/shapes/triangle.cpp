@@ -214,6 +214,7 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
 
     // Permute components of triangle vertices and ray direction
 	// 对三角形的顶点，和 方向 d, 他们的xyz 进行重排序, 目的是 让 z 最大
+	// 因为这个是统一的重新排序，相当都乘上了一个调整顺序的矩阵
     int kz = MaxDimension(Abs(ray.d));
     int kx = kz + 1;
     if (kx == 3) kx = 0;
@@ -237,13 +238,15 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
     p2t.y += Sy * p2t.z;
 
     // Compute edge function coefficients _e0_, _e1_, and _e2_
-	// 计算边的权重, 这里是用三角形的三条边, 相对于 原点, 算出的叉乘面积(带符号
+	// 因为射线被简化成了单位的Z轴，所以判断Z轴是否与一个空间内的三角形相交，只需要将三角形投影到 XOY 平面上，然后原点是否在三角形内即可
+	// 利用了 2D叉乘的公式 P0P1P2 中选取2个点, 和 原点 组成三角形, 然后用叉乘公式算面积
+	// 这个面积是带符号的, 如果都是在同一边(符号相同) 射线就肯定和三角形不相交
     Float e0 = p1t.x * p2t.y - p1t.y * p2t.x;
     Float e1 = p2t.x * p0t.y - p2t.y * p0t.x;
     Float e2 = p0t.x * p1t.y - p0t.y * p1t.x;
 
     // Fall back to double precision test at triangle edges
-	// 这里是怕精度不够, 再算一遍
+	// 当ei中有为0时，为了更精确的判断，用 double 再算一遍
     if (sizeof(Float) == sizeof(float) &&
         (e0 == 0.0f || e1 == 0.0f || e2 == 0.0f)) {
         double p2txp1ty = (double)p2t.x * (double)p1t.y;
@@ -271,8 +274,12 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
     p0t.z *= Sz;
     p1t.z *= Sz;
     p2t.z *= Sz;
+	// 这里的大致流程是, 我们要算出空间上，三角形和z轴的交点Z
+	// 然后我们现在这里有原点 O, P1,P2,P3 形成的4个三角形的面积参数
+	// 这里的面积参数比，能够算出相应的点O，那么Z值，就能通过这个比例进行插值得到 ???? 这一段的原理不太懂，但是能够从几何意义上理解
+	// 现在要做的判断是 2个：
+	// 算出的 tScale 和 我们的 det 是异号，那么交点就是在 -Z 轴上，或者超出了 射线 Ray 提供的 tMAx 这两种情况需要做排除
     Float tScaled = e0 * p0t.z + e1 * p1t.z + e2 * p2t.z;
-	// det 是 e0 + e1 + e2 , 这里的插值 是用重心的方法做的插值???? 为什么用重心做,不懂 得到的 tScaled
 	// 这里是判断范围
     if (det < 0 && (tScaled >= 0 || tScaled < ray.tMax * det))
         return false;
@@ -285,7 +292,7 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
     Float b0 = e0 * invDet;
     Float b1 = e1 * invDet;
     Float b2 = e2 * invDet;
-    Float t = tScaled * invDet; // 得到 t
+    Float t = tScaled * invDet; // 得到 t， 这里会得到最终的 t 值
 
     // Ensure that computed triangle $t$ is conservatively greater than zero
 
@@ -327,13 +334,14 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
         dpdv = (-duv12[0] * dp02 + duv02[0] * dp12) * invdet;
     }
     if (degenerateUV || Cross(dpdu, dpdv).LengthSquared() == 0) {
+		// 处理秩为0的情况 ???? 这里涉及线性代数知识, 后面补
         // Handle zero determinant for triangle partial derivative matrix
         Vector3f ng = Cross(p2 - p0, p1 - p0);
         if (ng.LengthSquared() == 0)
             // The triangle is actually degenerate; the intersection is
             // bogus.
             return false;
-
+		// 选择任意法线作为uv坐标系的Z轴，构建一个正交坐标系即可
         CoordinateSystem(Normalize(ng), &dpdu, &dpdv);
     }
 
@@ -347,10 +355,13 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
     Vector3f pError = gamma(7) * Vector3f(xAbsSum, yAbsSum, zAbsSum);
 
     // Interpolate $(u,v)$ parametric coordinates and hit point
+	// 算交点的 uv，一样用重心插值做法来做即可
     Point3f pHit = b0 * p0 + b1 * p1 + b2 * p2;
     Point2f uvHit = b0 * uv[0] + b1 * uv[1] + b2 * uv[2];
 
     // Test intersection against alpha texture, if present
+	// aplha 测试 ???? 暂时不能理解
+	// 一般不支持其他形状，只支持三角形
     if (testAlphaTexture && mesh->alphaMask) {
         SurfaceInteraction isectLocal(pHit, Vector3f(0, 0, 0), uvHit, -ray.d,
                                       dpdu, dpdv, Normal3f(0, 0, 0),
@@ -364,7 +375,10 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
                                 this, faceIndex);
 
     // Override surface normal in _isect_ for triangle
+	// 在 初始化时 , 一般会用 dpdu,dpdv 做初始化的法线，在 SurfaceInteraction 的调用中也是这样
+	// 但因为这里的 dpdu dpdv 被计算过, 所以不稳， 因为三角形是平面 所以直接使用 dp02, dp12 的叉值是最稳妥的
     isect->n = isect->shading.n = Normal3f(Normalize(Cross(dp02, dp12)));
+	// 这是两个关于 法线是否 翻转的参数
     if (reverseOrientation ^ transformSwapsHandedness)
         isect->n = isect->shading.n = -isect->n;
 
