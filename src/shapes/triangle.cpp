@@ -384,10 +384,13 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
 
     if (mesh->n || mesh->s) {
         // Initialize _Triangle_ shading geometry
+		// 这里是用来初始化 着色用 的几何信息
+		// 可以用插值的方法，让三角形上的点上的法线更平缓（在外部提供了 法线向量和切线向量的情况下
 
         // Compute shading normal _ns_ for triangle
         Normal3f ns;
         if (mesh->n) {
+			// 给出了 mesh->n, 所以我们可以找到给定的 法线向量，再用插值算法算出 ns
             ns = (b0 * mesh->n[v[0]] + b1 * mesh->n[v[1]] + b2 * mesh->n[v[2]]);
             if (ns.LengthSquared() > 0)
                 ns = Normalize(ns);
@@ -397,6 +400,7 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
             ns = isect->n;
 
         // Compute shading tangent _ss_ for triangle
+		// ss 同理
         Vector3f ss;
         if (mesh->s) {
             ss = (b0 * mesh->s[v[0]] + b1 * mesh->s[v[1]] + b2 * mesh->s[v[2]]);
@@ -416,6 +420,7 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
             CoordinateSystem((Vector3f)ns, &ss, &ts);
 
         // Compute $\dndu$ and $\dndv$ for triangle shading geometry
+		// 算微分的方式和上述一致
         Normal3f dndu, dndv;
         if (mesh->n) {
             // Compute deltas for triangle partial derivatives of normal
