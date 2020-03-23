@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -95,6 +95,7 @@ CurveCommon::CurveCommon(const Point3f c[4], Float width0, Float width1,
         n[0] = Normalize(norm[0]);
         n[1] = Normalize(norm[1]);
         normalAngle = std::acos(Clamp(Dot(n[0], n[1]), 0, 1));
+		// 这个 invSin 是预计算的
         invSinNormalAngle = 1 / std::sin(normalAngle);
     }
     ++nCurves;

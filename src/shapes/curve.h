@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -45,15 +45,20 @@ namespace pbrt {
 struct CurveCommon;
 
 // CurveType Declarations
+// Flat Cylinder 在于模仿圆柱, 计算交点的时候, 会和真实的圆柱体有误差
 enum class CurveType { Flat, Cylinder, Ribbon };
 
 // CurveCommon Declarations
+// 通用的参数, Curve 使用用 u 进行分段(算 boxxing 会更准确)
+// Curve 使用 shared_ptr 记录这里的信息
 struct CurveCommon {
     CurveCommon(const Point3f c[4], Float w0, Float w1, CurveType type,
                 const Normal3f *norm);
     const CurveType type;
+	// 这里的控制点, 是在 object 坐标系中的
     Point3f cpObj[4];
     Float width[2];
+	// 起点终点的法线 Ribbon 用的
     Normal3f n[2];
     Float normalAngle, invSinNormalAngle;
 };
