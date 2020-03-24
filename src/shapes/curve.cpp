@@ -46,12 +46,17 @@ STAT_COUNTER("Scene/Split curves", nSplitCurves);
 
 // Curve Utility Functions
 static Point3f BlossomBezier(const Point3f p[4], Float u0, Float u1, Float u2) {
+	// 贝塞尔一阶插值
     Point3f a[3] = {Lerp(u0, p[0], p[1]), Lerp(u0, p[1], p[2]),
                     Lerp(u0, p[2], p[3])};
+	// 二阶
     Point3f b[2] = {Lerp(u1, a[0], a[1]), Lerp(u1, a[1], a[2])};
+	// 三阶
     return Lerp(u2, b[0], b[1]);
 }
 
+// 贝塞尔曲线的2段拆分
+// 将4个控制点分为 7个控制点, 分别控制2段 子曲线
 inline void SubdivideBezier(const Point3f cp[4], Point3f cpSplit[7]) {
     cpSplit[0] = cp[0];
     cpSplit[1] = (cp[0] + cp[1]) / 2;
@@ -62,12 +67,14 @@ inline void SubdivideBezier(const Point3f cp[4], Point3f cpSplit[7]) {
     cpSplit[6] = cp[3];
 }
 
+// 验证贝塞尔曲线, 带入 CP u 得到贝塞尔的当前点, 顺便算个微分
 static Point3f EvalBezier(const Point3f cp[4], Float u,
                           Vector3f *deriv = nullptr) {
     Point3f cp1[3] = {Lerp(u, cp[0], cp[1]), Lerp(u, cp[1], cp[2]),
                       Lerp(u, cp[2], cp[3])};
     Point3f cp2[2] = {Lerp(u, cp1[0], cp1[1]), Lerp(u, cp1[1], cp1[2])};
     if (deriv) {
+		// 下面是求积分的简写（算出来是一致的)
         if ((cp2[1] - cp2[0]).LengthSquared() > 0)
             *deriv = 3 * (cp2[1] - cp2[0]);
         else {
@@ -77,6 +84,7 @@ static Point3f EvalBezier(const Point3f cp[4], Float u,
             // able to compute a surface normal there.  In that case, just punt and
             // take the difference between the first and last control points, which
             // ain't great, but will hopefully do.
+			// 个人理解, 这里的积分就是斜率, 当贝塞尔表示一条直线是, 斜率就是这个
             *deriv = cp[3] - cp[0];
         }
     }
@@ -121,15 +129,20 @@ std::vector<std::shared_ptr<Shape>> CreateCurve(
     return segments;
 }
 
+// 计算 贝塞尔曲线 的 Bound
+// 这是基于 一段区间在 uMin uMax 的 bound
 Bounds3f Curve::ObjectBound() const {
     // Compute object-space control points for curve segment, _cpObj_
+	// 贝塞尔曲线的凸包性质, 可以计算出一段贝塞尔曲线的凸包，而贝塞尔曲线就在这个凸包中(凸包定义参考 计算几何内容)
     Point3f cpObj[4];
+	// 算，对于 uMin,uMax 这一段距离中, 它的 4个 控制点(控制点组成凸包
     cpObj[0] = BlossomBezier(common->cpObj, uMin, uMin, uMin);
     cpObj[1] = BlossomBezier(common->cpObj, uMin, uMin, uMax);
     cpObj[2] = BlossomBezier(common->cpObj, uMin, uMax, uMax);
     cpObj[3] = BlossomBezier(common->cpObj, uMax, uMax, uMax);
     Bounds3f b =
         Union(Bounds3f(cpObj[0], cpObj[1]), Bounds3f(cpObj[2], cpObj[3]));
+	// 因为我们有宽度的定义, 所以需要做一下边缘拓展
     Float width[2] = {Lerp(uMin, common->width[0], common->width[1]),
                       Lerp(uMax, common->width[0], common->width[1])};
     return Expand(b, std::max(width[0], width[1]) * 0.5f);
@@ -140,10 +153,12 @@ bool Curve::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
     ProfilePhase p(isect ? Prof::CurveIntersect : Prof::CurveIntersectP);
     ++nTests;
     // Transform _Ray_ to object space
+	// 第一步 把射线转化到 Object 空间
     Vector3f oErr, dErr;
     Ray ray = (*WorldToObject)(r, &oErr, &dErr);
 
     // Compute object-space control points for curve segment, _cpObj_
+	// 计算这一段曲线 uMin-uMan 的4个控制点
     Point3f cpObj[4];
     cpObj[0] = BlossomBezier(common->cpObj, uMin, uMin, uMin);
     cpObj[1] = BlossomBezier(common->cpObj, uMin, uMin, uMax);
@@ -161,16 +176,21 @@ bool Curve::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
     // we get curve bounds with minimal extent in y, which in turn lets us
     // early out more quickly in recursiveIntersect().
     Vector3f dx = Cross(ray.d, cpObj[3] - cpObj[0]);
+	// dx 默认是垂直于 ray.d 和 cpObj[3] - cpObj[0] 的, 这是 Up 向量
     if (dx.LengthSquared() == 0) {
         // If the ray and the vector between the first and last control
         // points are parallel, dx will be zero.  Generate an arbitrary xy
         // orientation for the ray coordinate system so that intersection
         // tests can proceeed in this unusual case.
+		// 如果 cpObj[3] - cpObj[0] 和 ray.d 平行的话, 那么我们随便选择一个 dy, 再构建一次
+		// 总之目的是得到 dx
         Vector3f dy;
         CoordinateSystem(ray.d, &dx, &dy);
     }
 
+	// 构建 worldToCamera
     Transform objectToRay = LookAt(ray.o, ray.o + ray.d, dx);
+	// 映射控制点
     Point3f cp[4] = {objectToRay(cpObj[0]), objectToRay(cpObj[1]),
                      objectToRay(cpObj[2]), objectToRay(cpObj[3])};
 
@@ -178,6 +198,8 @@ bool Curve::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
     // the curve's bounding box. We start with the y dimension, since the y
     // extent is generally the smallest (and is often tiny) due to our
     // careful orientation of the ray coordinate ysstem above.
+	// 这里是优化性的计算, 因为我们求交点, 可以先求 Bound + 拓展 和 射线的交点
+	// 这里的 0 有关的判断, 是判断是否零点在 XOY 的投影内
     Float maxWidth = std::max(Lerp(uMin, common->width[0], common->width[1]),
                               Lerp(uMax, common->width[0], common->width[1]));
     if (std::max(std::max(cp[0].y, cp[1].y), std::max(cp[2].y, cp[3].y)) +
@@ -194,6 +216,7 @@ bool Curve::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
         return false;
 
     // Check for non-overlap in z.
+	// Z 的判断, 就在 Z 轴上
     Float rayLength = ray.d.Length();
     Float zMax = rayLength * ray.tMax;
     if (std::max(std::max(cp[0].z, cp[1].z), std::max(cp[2].z, cp[3].z)) +
@@ -202,6 +225,8 @@ bool Curve::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
             0.5f * maxWidth > zMax)
         return false;
 
+	// 求曲线对射线的交点, 整体的思路是细分, 细分到每一小段曲线都接近线性，这样就可以用线性的高效方式来实现求交
+	// ???? 这一段的实现原理还没懂, 目的就是动态的求出一个 最合适的 将这一段曲线分几段的算法
     // Compute refinement depth for curve, _maxDepth_
     Float L0 = 0;
     for (int i = 0; i < 2; ++i)
@@ -230,6 +255,7 @@ bool Curve::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
                               uMax, maxDepth);
 }
 
+//给定线段, 给定曲线, 求交
 bool Curve::recursiveIntersect(const Ray &ray, Float *tHit,
                                SurfaceInteraction *isect, const Point3f cp[4],
                                const Transform &rayToObject, Float u0, Float u1,
@@ -245,6 +271,7 @@ bool Curve::recursiveIntersect(const Ray &ray, Float *tHit,
         // overlaps the segment before recursively checking for
         // intersection with it.
         bool hit = false;
+		// 2 分发, 这里先测 bounding
         Float u[3] = {u0, (u0 + u1) / 2.f, u1};
         // Pointer to the 4 control poitns for the current segment.
         const Point3f *cps = cpSplit;
@@ -255,6 +282,7 @@ bool Curve::recursiveIntersect(const Ray &ray, Float *tHit,
 
             // As above, check y first, since it most commonly lets us exit
             // out early.
+			// 先测Y是因为Y容易第一个退出
             if (std::max(std::max(cps[0].y, cps[1].y),
                          std::max(cps[2].y, cps[3].y)) +
                         0.5 * maxWidth < 0 ||
@@ -280,10 +308,12 @@ bool Curve::recursiveIntersect(const Ray &ray, Float *tHit,
                         0.5 * maxWidth > zMax)
                 continue;
 
+			// 如果和 bounding 相交, 就继续递归测试
             hit |= recursiveIntersect(ray, tHit, isect, cps, rayToObject,
                                       u[seg], u[seg + 1], depth - 1);
             // If we found an intersection and this is a shadow ray,
             // we can exit out immediately.
+			// 如果得到了答案, 就立刻退出
             if (hit && !tHit) return true;
         }
         return hit;
@@ -292,46 +322,62 @@ bool Curve::recursiveIntersect(const Ray &ray, Float *tHit,
 
         // Test ray against segment endpoint boundaries
 
+		// 边缘判断逻辑
+		// 这里的逻辑是这样的，通过做垂线判断和叉乘求积，得到原点 0,0 在控制点形成的连线的 右手侧还是左手侧
+		// 注意这里使用的是 左手系
         // Test sample point against tangent perpendicular at curve start
         Float edge =
             (cp[1].y - cp[0].y) * -cp[0].y + cp[0].x * (cp[0].x - cp[1].x);
         if (edge < 0) return false;
 
         // Test sample point against tangent perpendicular at curve end
+		// 同理
         edge = (cp[2].y - cp[3].y) * -cp[3].y + cp[3].x * (cp[3].x - cp[2].x);
         if (edge < 0) return false;
 
+		// 这里计算出的，是 u0-u1 的比例 所以计算的点, 都是 Cruve 线上的点，也就是 Cruve 模型的中心点
         // Compute line $w$ that gives minimum distance to sample point
+		// 在经过细分之后，直接求 原点(0,0) 在直线 CP[3]-CP[0] 上的投影的比例即可求出 交点
         Vector2f segmentDirection = Point2f(cp[3]) - Point2f(cp[0]);
         Float denom = segmentDirection.LengthSquared();
         if (denom == 0) return false;
         Float w = Dot(-Vector2f(cp[0]), segmentDirection) / denom;
 
         // Compute $u$ coordinate of curve intersection point and _hitWidth_
+		// 通过 w, 计算出 u 和 hitWidth
         Float u = Clamp(Lerp(w, u0, u1), u0, u1);
         Float hitWidth = Lerp(u, common->width[0], common->width[1]);
         Normal3f nHit;
         if (common->type == CurveType::Ribbon) {
+			// 如果是 ribbon 类型, 我们要使用 球形插值 来计算
             // Scale _hitWidth_ based on ribbon orientation
             Float sin0 = std::sin((1 - u) * common->normalAngle) *
                          common->invSinNormalAngle;
             Float sin1 =
                 std::sin(u * common->normalAngle) * common->invSinNormalAngle;
+			// 命中点 处的法线
             nHit = sin0 * common->n[0] + sin1 * common->n[1];
+			// 那么 就要乘上 法线在这个方向 和 d 方向的 Cos
             hitWidth *= AbsDot(nHit, ray.d) / rayLength;
         }
 
         // Test intersection point against curve width
+		// 验证性测试, 使用 w, 带入贝塞尔计算中, 进行一次验证, 顺便算关于 u 的积分 (也是那一点的切线方向
         Vector3f dpcdw;
         Point3f pc = EvalBezier(cp, Clamp(w, 0, 1), &dpcdw);
         Float ptCurveDist2 = pc.x * pc.x + pc.y * pc.y;
+		// 宽度不够, 排除
         if (ptCurveDist2 > hitWidth * hitWidth * .25) return false;
         Float zMax = rayLength * ray.tMax;
+		// 落在了 z的外面
         if (pc.z < 0 || pc.z > zMax) return false;
 
         // Compute $v$ coordinate of curve intersection point
+		// Cruve 中心线和 Ray.d 他们的交点，之间的距离
         Float ptCurveDist = std::sqrt(ptCurveDist2);
+		// 用切线判断是在 左还是右
         Float edgeFunc = dpcdw.x * -pc.y + pc.x * dpcdw.y;
+		// v 表示的是宽度的 [0-1] 的取值点, 用 0.5是Cruve中心线 用 真实交点宽度/Cruve宽度 作为偏移
         Float v = (edgeFunc > 0) ? 0.5f + ptCurveDist / hitWidth
                                  : 0.5f - ptCurveDist / hitWidth;
 
@@ -344,22 +390,36 @@ bool Curve::recursiveIntersect(const Ray &ray, Float *tHit,
 
             // Compute $\dpdu$ and $\dpdv$ for curve intersection
             Vector3f dpdu, dpdv;
+			// 用u计算正确的点, 直接上 common 中的大线段, u 也是 大线段中的值, 顺便求得 切线
+			// 这里是物体的坐标系，也就是 Cruve 的坐标系！
             EvalBezier(common->cpObj, u, &dpdu);
             CHECK_NE(Vector3f(0, 0, 0), dpdu) << "u = " << u << ", cp = " <<
                 common->cpObj[0] << ", " << common->cpObj[1] << ", " <<
                 common->cpObj[2] << ", " << common->cpObj[3];
 
-            if (common->type == CurveType::Ribbon)
-                dpdv = Normalize(Cross(nHit, dpdu)) * hitWidth;
-            else {
+			// dv 的算法不一样
+			if (common->type == CurveType::Ribbon)
+			{
+				// Ribbon 因为是面片形式, 所以 dv 直接用之前算出的 法线, 算个垂直即可
+				// 切线的长度, 直接等于 Cruve 的宽度
+				// 当然 dpdu 的长度, 因为有值带入，其长度就是那一段 近似直线 的Cruve 长度
+				dpdv = Normalize(Cross(nHit, dpdu)) * hitWidth;
+			}
+			else {
                 // Compute curve $\dpdv$ for flat and cylinder curves
+				// 先转换到 Ray 坐标系
                 Vector3f dpduPlane = (Inverse(rayToObject))(dpdu);
+				// 先算出平切面的 切线 - Flat 类型就是这个值, 因为 Flat 的性质就是面向 射线
                 Vector3f dpdvPlane =
                     Normalize(Vector3f(-dpduPlane.y, dpduPlane.x, 0)) *
                     hitWidth;
                 if (common->type == CurveType::Cylinder) {
+					// 这里是比较难想象的一点, 假设是一根圆柱，在射线坐标系上相交
+					// 是用 v 的插值来模拟旋转角度
+					// 但其实这里，使用弧度插值，会更好
                     // Rotate _dpdvPlane_ to give cylindrical appearance
                     Float theta = Lerp(v, -90., 90.);
+					// 这个rot 是取逆矩阵
                     Transform rot = Rotate(-theta, dpduPlane);
                     dpdvPlane = rot(dpdvPlane);
                 }

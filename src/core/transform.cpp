@@ -200,6 +200,9 @@ Transform Rotate(Float theta, const Vector3f &axis) {
     return Transform(m, Transpose(m));
 }
 
+// 传入一个摄像机的坐标系构成要素 pos look 和 up
+// 返回一个 worldToCamera 矩阵
+// 先构建 cameraToWorld 再返回其 逆矩阵
 Transform LookAt(const Point3f &pos, const Point3f &look, const Vector3f &up) {
     Matrix4x4 cameraToWorld;
     // Initialize fourth column of viewing matrix
@@ -232,6 +235,9 @@ Transform LookAt(const Point3f &pos, const Point3f &look, const Vector3f &up) {
     cameraToWorld.m[1][2] = dir.y;
     cameraToWorld.m[2][2] = dir.z;
     cameraToWorld.m[3][2] = 0.;
+	// 注意到, camerToWorld * [0, 0, 1, 0]^T = [dir.x, dir.y, dir.z, 0]^T
+	// 所以构成时, dir 是作为 Z 轴的, 这个我们的 XOY 投影计算交点 很搭配
+
     return Transform(Inverse(cameraToWorld), cameraToWorld);
 }
 
