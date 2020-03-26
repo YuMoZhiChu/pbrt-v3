@@ -94,6 +94,16 @@ TriangleMesh::TriangleMesh(
         faceIndices = std::vector<int>(fIndices, fIndices + nTriangles);
 }
 
+// ObjectToWorld, WorldToObject : const Transform 2个变换矩阵(这个数据直接传递到 Shape 上, 对整个算法没有影响
+// reverseOrientation : bool 是否取反方向(这个数据直接传递到 Shape 上, 对整个算法没有影响
+// nTriangles : mesh 中的三角形个数
+// vertexIndices : 顶点下标数组 每3个视为一个三角形 比如  P[vertexIndices[3*i]], P[vertexIndices[3*i+1]], P[vertexIndices[3*i+2]].
+// nVertices : 顶点个数
+// p : 顶点数组
+// s : 切线数组 op
+// n : 法线数组 op
+// uv : uv数组 op
+// alphaMask, shadowAlphaMask : alpha测试和shadow测试用到的
 std::vector<std::shared_ptr<Shape>> CreateTriangleMesh(
     const Transform *ObjectToWorld, const Transform *WorldToObject,
     bool reverseOrientation, int nTriangles, const int *vertexIndices,
