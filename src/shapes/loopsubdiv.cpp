@@ -379,6 +379,7 @@ static std::vector<std::shared_ptr<Shape>> LoopSubdivide(
     }
 
     // Push vertices to limit surface
+	// ???? 实在不明白, 这里为什么还需要对点做这样的一步处理
     std::unique_ptr<Point3f[]> pLimit(new Point3f[v.size()]);
     for (size_t i = 0; i < v.size(); ++i) {
         if (v[i]->boundary)
@@ -386,9 +387,11 @@ static std::vector<std::shared_ptr<Shape>> LoopSubdivide(
         else
             pLimit[i] = weightOneRing(v[i], loopGamma(v[i]->valence()));
     }
+	// 把点拷贝到 pLimit 中
     for (size_t i = 0; i < v.size(); ++i) v[i]->p = pLimit[i];
 
     // Compute vertex tangents on limit surface
+	// 计算法线
     std::vector<Normal3f> Ns;
     Ns.reserve(v.size());
     std::vector<Point3f> pRing(16, Point3f());
@@ -406,6 +409,7 @@ static std::vector<std::shared_ptr<Shape>> LoopSubdivide(
         } else {
             // Compute tangents of boundary face
             S = pRing[valence - 1] - pRing[0];
+			// ???? 这个算法也很玄妙，但是 v=2 的时候, 确实是对的
             if (valence == 2)
                 T = Vector3f(pRing[0] + pRing[1] - 2 * vertex->p);
             else if (valence == 3)
