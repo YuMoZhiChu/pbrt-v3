@@ -230,6 +230,7 @@ static std::vector<std::shared_ptr<Shape>> LoopSubdivide(
     // Finish vertex initialization
 	// 1. 计算顶点是外部点还是内部点
 	// 2. 计算顶点价
+	// 这里的计算似乎有问题, 如果是小于 6,4 的情况, 没有做考虑
     for (int i = 0; i < nVertices; ++i) {
         SDVertex *v = vertices[i];
         SDFace *f = v->startFace;
