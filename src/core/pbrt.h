@@ -197,6 +197,7 @@ static PBRT_CONSTEXPR Float MaxFloat = std::numeric_limits<Float>::max();
 static PBRT_CONSTEXPR Float Infinity = std::numeric_limits<Float>::infinity();
 #endif
 #ifdef _MSC_VER
+// 这里直接使用了 eb = 0, 即 value = 1.0 时, 的 ulp(2^-23) 因为 epsilon 是要规范在一半以内, 所以乘上 0.5
 #define MachineEpsilon (std::numeric_limits<Float>::epsilon() * 0.5)
 #else
 static PBRT_CONSTEXPR Float MachineEpsilon =
@@ -215,6 +216,8 @@ static PBRT_CONSTEXPR Float Sqrt2 = 1.41421356237309504880;
 #endif
 
 // Global Inline Functions
+// 使用memcpy来实现, float转为uint32_t, memcpy在编译器的优化下能表现出很高的效率
+// 下面的同理
 inline uint32_t FloatToBits(float f) {
     uint32_t ui;
     memcpy(&ui, &f, sizeof(float));
@@ -239,12 +242,16 @@ inline double BitsToFloat(uint64_t ui) {
     return f;
 }
 
+// 利用转换成 uint32_t 实现获得下一个最近的 能被表示的 浮点数
 inline float NextFloatUp(float v) {
     // Handle infinity and negative zero for _NextFloatUp()_
+	// 无穷大直接返回
     if (std::isinf(v) && v > 0.) return v;
+	// 因为有 -0 和 +0, 所以这个 Up 当做 +0 处理
     if (v == -0.f) v = 0.f;
 
     // Advance _v_ to next higher float
+	// 因为大小端规则, 这里直接 ++ 即可
     uint32_t ui = FloatToBits(v);
     if (v >= 0)
         ++ui;
