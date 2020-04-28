@@ -73,6 +73,7 @@ class EFloat {
         Check();
     }
 #endif  // DEBUG
+	// 这里的流程和书上的不太一致, 效果都是进行误差区间的转换和处理
     EFloat operator+(EFloat ef) const {
         EFloat r;
         r.v = v + ef.v;
@@ -86,16 +87,21 @@ class EFloat {
         r.Check();
         return r;
     }
+	// 提供显示的强制类型转换
     explicit operator float() const { return v; }
+	// 提供显示的强制类型转换
     explicit operator double() const { return v; }
+	// 获取当前的绝对误差区间
     float GetAbsoluteError() const { return NextFloatUp(std::max(std::abs(high - v),
                                                                  std::abs(v - low))); }
     float UpperBound() const { return high; }
     float LowerBound() const { return low; }
 #ifndef NDEBUG
+	// 维护精确值的 相对误差
     float GetRelativeError() const {
         return std::abs((vPrecise - v) / vPrecise);
     }
+	// 维护精确值
     long double PreciseValue() const { return vPrecise; }
 #endif
     EFloat operator-(EFloat ef) const {
@@ -204,8 +210,10 @@ class EFloat {
 
   private:
     // EFloat Private Data
+	// v 是计算机存储的值 [low, high] 记录了它的误差界限
     float v, low, high;
 #ifndef NDEBUG
+	// 如果是Debug模式, 会维护一个高精度的存储值
     long double vPrecise;
 #endif  // NDEBUG
     friend inline EFloat sqrt(EFloat fe);
@@ -264,7 +272,7 @@ inline EFloat abs(EFloat fe) {
     }
 }
 
-// 一元二次方程, 求解 t1, t2
+// 一元二次方程, 求解 t1, t2, 支持传入 误差区间
 inline bool Quadratic(EFloat A, EFloat B, EFloat C, EFloat *t0, EFloat *t1);
 inline bool Quadratic(EFloat A, EFloat B, EFloat C, EFloat *t0, EFloat *t1) {
     // Find quadratic discriminant

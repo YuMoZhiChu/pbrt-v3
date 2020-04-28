@@ -307,10 +307,12 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
     // Ensure that computed triangle $t$ is conservatively greater than zero
 
     // Compute $\delta_z$ term for triangle $t$ error bounds
+	// 计算 z 的误差范围, 因为经历了3次运算, 所以是 gamma(3)
     Float maxZt = MaxComponent(Abs(Vector3f(p0t.z, p1t.z, p2t.z)));
     Float deltaZ = gamma(3) * maxZt;
 
     // Compute $\delta_x$ and $\delta_y$ terms for triangle $t$ error bounds
+	// x, y 的误差运算
     Float maxXt = MaxComponent(Abs(Vector3f(p0t.x, p1t.x, p2t.x)));
     Float maxYt = MaxComponent(Abs(Vector3f(p0t.y, p1t.y, p2t.y)));
     Float deltaX = gamma(5) * (maxXt + maxZt);
@@ -322,6 +324,7 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
 
     // Compute $\delta_t$ term for triangle $t$ error bounds and check _t_
     Float maxE = MaxComponent(Abs(Vector3f(e0, e1, e2)));
+	// 最后得到 t 的误差运算, 这里加上了原来的值
     Float deltaT = 3 *
                    (gamma(3) * maxE * maxZt + deltaE * maxZt + deltaZ * maxE) *
                    std::abs(invDet);
