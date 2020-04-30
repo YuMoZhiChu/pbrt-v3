@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -76,6 +76,7 @@ TransformedPrimitive::TransformedPrimitive(std::shared_ptr<Primitive> &primitive
 bool TransformedPrimitive::Intersect(const Ray &r,
                                      SurfaceInteraction *isect) const {
     // Compute _ray_ after transformation by _PrimitiveToWorld_
+	// 需要乘上逆矩阵
     Transform InterpolatedPrimToWorld;
     PrimitiveToWorld.Interpolate(r.time, &InterpolatedPrimToWorld);
     Ray ray = Inverse(InterpolatedPrimToWorld)(r);
@@ -117,6 +118,7 @@ bool GeometricPrimitive::Intersect(const Ray &r,
                                    SurfaceInteraction *isect) const {
     Float tHit;
     if (!shape->Intersect(r, &tHit, isect)) return false;
+	// 更新射线的 tMax, 减少后面的运算
     r.tMax = tHit;
     isect->primitive = this;
     CHECK_GE(Dot(isect->n, isect->shading.n), 0.);
@@ -141,6 +143,7 @@ void GeometricPrimitive::ComputeScatteringFunctions(
     SurfaceInteraction *isect, MemoryArena &arena, TransportMode mode,
     bool allowMultipleLobes) const {
     ProfilePhase p(Prof::ComputeScatteringFuncs);
+	// 直接转发到 材质 的 ComputeScatteringFunctions
     if (material)
         material->ComputeScatteringFunctions(isect, arena, mode,
                                              allowMultipleLobes);

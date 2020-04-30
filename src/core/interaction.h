@@ -154,8 +154,11 @@ class SurfaceInteraction : public Interaction {
         Vector3f dpdu, dpdv;
         Normal3f dndu, dndv;
     } shading;
+	// 命中的 基元
     const Primitive *primitive = nullptr;
+	// BSDF 的指针
     BSDF *bsdf = nullptr;
+	// BSSRDF 的指针
     BSSRDF *bssrdf = nullptr;
     mutable Vector3f dpdx, dpdy;
     mutable Float dudx = 0, dvdx = 0, dudy = 0, dvdy = 0;
