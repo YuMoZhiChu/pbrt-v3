@@ -141,8 +141,10 @@ class TransformedPrimitive : public Primitive {
 class Aggregate : public Primitive {
   public:
     // Aggregate Public Methods
+	// 这些函数不应该被调用
     const AreaLight *GetAreaLight() const;
     const Material *GetMaterial() const;
+	// isect 是返回具体的相交信息
     void ComputeScatteringFunctions(SurfaceInteraction *isect,
                                     MemoryArena &arena, TransportMode mode,
                                     bool allowMultipleLobes) const;
