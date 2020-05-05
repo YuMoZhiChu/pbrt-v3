@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -52,23 +52,27 @@ struct BVHPrimitiveInfo {
     BVHPrimitiveInfo(size_t primitiveNumber, const Bounds3f &bounds)
         : primitiveNumber(primitiveNumber),
           bounds(bounds),
+		  // 初始化时，计算重心
           centroid(.5f * bounds.pMin + .5f * bounds.pMax) {}
     size_t primitiveNumber;
     Bounds3f bounds;
     Point3f centroid;
 };
 
+// BVH 树节点
 struct BVHBuildNode {
     // BVHBuildNode Public Methods
     void InitLeaf(int first, int n, const Bounds3f &b) {
         firstPrimOffset = first;
         nPrimitives = n;
         bounds = b;
+		// 叶子节点 没有子节点
         children[0] = children[1] = nullptr;
         ++leafNodes;
         ++totalLeafNodes;
         totalPrimitives += n;
     }
+	// 当子节点存在时, 父节点非常好实现, 挂两个指针, Union 一次 Bound 即可
     void InitInterior(int axis, BVHBuildNode *c0, BVHBuildNode *c1) {
         children[0] = c0;
         children[1] = c1;
@@ -77,8 +81,13 @@ struct BVHBuildNode {
         nPrimitives = 0;
         ++interiorNodes;
     }
+	// 表示所有子节点的边界 Union做法得到的 bounds
     Bounds3f bounds;
+	// 非叶子节点, 记录他们的左右孩子
     BVHBuildNode *children[2];
+	// splitAixs 记录将 2个子节点 分开的轴, 提高遍历的效率
+	// firstPrimOffset, nPrimitives 用于描述 叶子节点 包含的 primitive, [firstPrimOffset, firstPrimOffset+nPrimitives) 不包含右边
+	// 因此，需要对 prim 数组进行重新排序
     int splitAxis, firstPrimOffset, nPrimitives;
 };
 
@@ -190,6 +199,7 @@ BVHAccel::BVHAccel(std::vector<std::shared_ptr<Primitive>> p,
     // Build BVH from _primitives_
 
     // Initialize _primitiveInfo_ array for primitives
+	// 存入 prim 的 index 和 bound
     std::vector<BVHPrimitiveInfo> primitiveInfo(primitives.size());
     for (size_t i = 0; i < primitives.size(); ++i)
         primitiveInfo[i] = {i, primitives[i]->WorldBound()};
@@ -198,14 +208,18 @@ BVHAccel::BVHAccel(std::vector<std::shared_ptr<Primitive>> p,
     MemoryArena arena(1024 * 1024);
     int totalNodes = 0;
     std::vector<std::shared_ptr<Primitive>> orderedPrims;
+	// 预先分配内存
     orderedPrims.reserve(primitives.size());
     BVHBuildNode *root;
     if (splitMethod == SplitMethod::HLBVH)
         root = HLBVHBuild(arena, primitiveInfo, &totalNodes, orderedPrims);
     else
+		// 返回 BVH 树的根节点, 节点被放在 arena 中的内存中, 总节点数 totalNodes
+		// orderedPrims 会带上顺序
         root = recursiveBuild(arena, primitiveInfo, 0, primitives.size(),
                               &totalNodes, orderedPrims);
-    primitives.swap(orderedPrims);
+	
+	primitives.swap(orderedPrims);
     primitiveInfo.resize(0);
     LOG(INFO) << StringPrintf("BVH created with %d nodes for %d "
                               "primitives (%.2f MB), arena allocated %.2f MB",
@@ -233,6 +247,11 @@ struct BucketInfo {
     Bounds3f bounds;
 };
 
+// 递归式调用
+// start, end 代表 [start, end) 即 primInfo[start] 到 primInfo[end-1] 的  prim 子集
+// [start, end) 只有一个值时, 返回一个 叶子节点
+// 所以该方法就是 [start, mid) [mid, end) 依次递归
+// totalNodes 用于构造更紧凑的 LinerBVHTree
 BVHBuildNode *BVHAccel::recursiveBuild(
     MemoryArena &arena, std::vector<BVHPrimitiveInfo> &primitiveInfo, int start,
     int end, int *totalNodes,
@@ -247,6 +266,9 @@ BVHBuildNode *BVHAccel::recursiveBuild(
     int nPrimitives = end - start;
     if (nPrimitives == 1) {
         // Create leaf _BVHBuildNode_
+		// 每生成一个 叶子节点
+		// 我们记录位置，并且把 prim 压入 orderedPrims
+		// 这么做的好处: 1. 得到有序的 primsInfo 2. BVH树中只需要记录 offset
         int firstPrimOffset = orderedPrims.size();
         for (int i = start; i < end; ++i) {
             int primNum = primitiveInfo[i].primitiveNumber;
@@ -259,11 +281,14 @@ BVHBuildNode *BVHAccel::recursiveBuild(
         Bounds3f centroidBounds;
         for (int i = start; i < end; ++i)
             centroidBounds = Union(centroidBounds, primitiveInfo[i].centroid);
+		// dim 是拓展范围最宽的一条轴, 在这里算了之后, 这个子集里面, 就以 dim 进行分类
+		// 遍历一次取最大
         int dim = centroidBounds.MaximumExtent();
 
         // Partition primitives into two sets and build children
         int mid = (start + end) / 2;
         if (centroidBounds.pMax[dim] == centroidBounds.pMin[dim]) {
+			// 如果大家都重复在一个地方, 这里明显是重合了, 那么也视为叶子节点
             // Create leaf _BVHBuildNode_
             int firstPrimOffset = orderedPrims.size();
             for (int i = start; i < end; ++i) {
@@ -274,9 +299,11 @@ BVHBuildNode *BVHAccel::recursiveBuild(
             return node;
         } else {
             // Partition primitives based on _splitMethod_
+			// 基于不同的算法做分类
             switch (splitMethod) {
             case SplitMethod::Middle: {
                 // Partition primitives through node's midpoint
+				// C++ https://en.cppreference.com/w/cpp/algorithm/partition
                 Float pmid =
                     (centroidBounds.pMin[dim] + centroidBounds.pMax[dim]) / 2;
                 BVHPrimitiveInfo *midPtr = std::partition(
@@ -284,16 +311,24 @@ BVHBuildNode *BVHAccel::recursiveBuild(
                     [dim, pmid](const BVHPrimitiveInfo &pi) {
                         return pi.centroid[dim] < pmid;
                     });
+				// C++ 的例子中, 这里是用指针减法的，但是因为这里涉及到 start 这个递归变量
+				// 所以要玩指针运算
                 mid = midPtr - &primitiveInfo[0];
                 // For lots of prims with large overlapping bounding boxes, this
                 // may fail to partition; in that case don't break and fall
                 // through
                 // to EqualCounts.
+				// 这种情况是可能出现的, 当一个超级大的 prim 包裹住所有的 prim 时, 这里就无法做区分了
+				// 如果没有 break 掉, 那么会执行下一个 case
                 if (mid != start && mid != end) break;
             }
             case SplitMethod::EqualCounts: {
                 // Partition primitives into equally-sized subsets
+				// 退化成取中间
                 mid = (start + end) / 2;
+				// nth_element 的时间复杂度是 On, NlogN 次交换，比全排序要好上一点
+				// 这里的结果, [start, mid) [mid, end) 这两段里面，不保证有序
+				// https://zh.cppreference.com/w/cpp/algorithm/nth_element
                 std::nth_element(&primitiveInfo[start], &primitiveInfo[mid],
                                  &primitiveInfo[end - 1] + 1,
                                  [dim](const BVHPrimitiveInfo &a,
@@ -391,6 +426,7 @@ BVHBuildNode *BVHAccel::recursiveBuild(
                 break;
             }
             }
+			// 递归执行
             node->InitInterior(dim,
                                recursiveBuild(arena, primitiveInfo, start, mid,
                                               totalNodes, orderedPrims),

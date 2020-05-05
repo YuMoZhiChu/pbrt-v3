@@ -55,6 +55,7 @@ struct LinearBVHNode;
 class BVHAccel : public Aggregate {
   public:
     // BVHAccel Public Types
+	// 4 种不同的算法
     enum class SplitMethod { SAH, HLBVH, Middle, EqualCounts };
 
     // BVHAccel Public Methods
