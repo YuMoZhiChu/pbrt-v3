@@ -341,6 +341,8 @@ BVHBuildNode *BVHAccel::recursiveBuild(
             default: {
                 // Partition primitives using approximate SAH
                 if (nPrimitives <= 2) {
+					// 如果只有两个的情况下, 这里做 SAH 贪心算法的运算是相当不划算的（教程上是4个
+					// 直接对半分即可
                     // Partition primitives into equally-sized subsets
                     mid = (start + end) / 2;
                     std::nth_element(&primitiveInfo[start], &primitiveInfo[mid],
@@ -352,24 +354,30 @@ BVHBuildNode *BVHAccel::recursiveBuild(
                                      });
                 } else {
                     // Allocate _BucketInfo_ for SAH partition buckets
+					// 固定分成 12 个 Bucket
                     PBRT_CONSTEXPR int nBuckets = 12;
                     BucketInfo buckets[nBuckets];
 
                     // Initialize _BucketInfo_ for SAH partition buckets
                     for (int i = start; i < end; ++i) {
+						// 算出这个 primitiveInfo[i] 在第几个 bucket
                         int b = nBuckets *
                                 centroidBounds.Offset(
                                     primitiveInfo[i].centroid)[dim];
                         if (b == nBuckets) b = nBuckets - 1;
                         CHECK_GE(b, 0);
                         CHECK_LT(b, nBuckets);
+						// 增加数量
                         buckets[b].count++;
+						// 拓展 bucket 的 bound，合并在它区间内的 prim
                         buckets[b].bounds =
                             Union(buckets[b].bounds, primitiveInfo[i].bounds);
                     }
 
                     // Compute costs for splitting after each bucket
+					// 因为是 n 个 bucket，所以有 n-1 种 split 方法，我们把 任何一次 RayInsert 计算的代价 看做 1
                     Float cost[nBuckets - 1];
+					// 这里的开销是 On^2 但是 n 只有 11 完全可以接受
                     for (int i = 0; i < nBuckets - 1; ++i) {
                         Bounds3f b0, b1;
                         int count0 = 0, count1 = 0;
@@ -381,6 +389,8 @@ BVHBuildNode *BVHAccel::recursiveBuild(
                             b1 = Union(b1, buckets[j].bounds);
                             count1 += buckets[j].count;
                         }
+						// 这个 1 是 Ttrav 的代价, 但其实没什么用，用 0 都可以
+						// 这里用的是 表面积 来表示概率 ???? 原因1: 射线只和表面相交
                         cost[i] = 1 +
                                   (count0 * b0.SurfaceArea() +
                                    count1 * b1.SurfaceArea()) /
@@ -400,10 +410,12 @@ BVHBuildNode *BVHAccel::recursiveBuild(
                     // Either create leaf or split primitives at selected SAH
                     // bucket
                     Float leafCost = nPrimitives;
+					// 起码得比遍历开销低
                     if (nPrimitives > maxPrimsInNode || minCost < leafCost) {
                         BVHPrimitiveInfo *pmid = std::partition(
                             &primitiveInfo[start], &primitiveInfo[end - 1] + 1,
                             [=](const BVHPrimitiveInfo &pi) {
+								// 算出 pi 属于哪个 bucket
                                 int b = nBuckets *
                                         centroidBounds.Offset(pi.centroid)[dim];
                                 if (b == nBuckets) b = nBuckets - 1;
