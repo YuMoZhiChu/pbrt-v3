@@ -92,12 +92,17 @@ struct BVHBuildNode {
 };
 
 struct MortonPrimitive {
+	// 它的在 primitiveInfo  下标
     int primitiveIndex;
+	// 莫顿码
     uint32_t mortonCode;
 };
 
+// 表示一颗子树
 struct LBVHTreelet {
+	// 起点, 个数
     int startIndex, nPrimitives;
+	// 结果节点, 这是指向子树根节点的指针
     BVHBuildNode *buildNodes;
 };
 
@@ -115,8 +120,11 @@ struct LinearBVHNode {
 // BVHAccel Utility Functions
 inline uint32_t LeftShift3(uint32_t x) {
     CHECK_LE(x, (1 << 10));
-    if (x == (1 << 10)) --x;
+    if (x == (1 << 10)) --x; // 如果恰好等于边界, 就减去1
 #ifdef PBRT_HAVE_BINARY_CONSTANTS
+	// 0b 做为 C++ 的2进制拓展
+	// 这一段的目的是, 对 x 做一个维度的 Morton 编码, 目的是减少计算次数
+	// http://www.pbr-book.org/3ed-2018/Primitives_and_Intersection_Acceleration/Bounding_Volume_Hierarchies.html#LeftShift3
     x = (x | (x << 16)) & 0b00000011000000000000000011111111;
     // x = ---- --98 ---- ---- ---- ---- 7654 3210
     x = (x | (x << 8)) & 0b00000011000000001111000000001111;
@@ -142,19 +150,23 @@ inline uint32_t EncodeMorton3(const Vector3f &v) {
     CHECK_GE(v.x, 0);
     CHECK_GE(v.y, 0);
     CHECK_GE(v.z, 0);
+	// 结果上 z 左移2次, y 左移1次
     return (LeftShift3(v.z) << 2) | (LeftShift3(v.y) << 1) | LeftShift3(v.x);
 }
 
+// 基数排序的写法, 这里是 lowbit 开始的, 写得非常简练
+// 对于这里的二进制, 基数排序 会比 快排 和 插入排序做混合的 std::sort 要快
 static void RadixSort(std::vector<MortonPrimitive> *v) {
     std::vector<MortonPrimitive> tempVector(v->size());
-    PBRT_CONSTEXPR int bitsPerPass = 6;
-    PBRT_CONSTEXPR int nBits = 30;
+    PBRT_CONSTEXPR int bitsPerPass = 6; // 我们选取的排序位数是 6 也就是 2^6
+    PBRT_CONSTEXPR int nBits = 30; // 总共 30 位数需要排序, 所以我们需要执行 5 次
     static_assert((nBits % bitsPerPass) == 0,
                   "Radix sort bitsPerPass must evenly divide nBits");
     PBRT_CONSTEXPR int nPasses = nBits / bitsPerPass;
 
     for (int pass = 0; pass < nPasses; ++pass) {
         // Perform one pass of radix sort, sorting _bitsPerPass_ bits
+		// 从 lowBit 开始运算
         int lowBit = pass * bitsPerPass;
 
         // Set in and out vector pointers for radix sort pass
@@ -169,22 +181,25 @@ static void RadixSort(std::vector<MortonPrimitive> *v) {
             int bucket = (mp.mortonCode >> lowBit) & bitMask;
             CHECK_GE(bucket, 0);
             CHECK_LT(bucket, nBuckets);
-            ++bucketCount[bucket];
+            ++bucketCount[bucket]; // 记录该基数出现的次数
         }
 
         // Compute starting index in output array for each bucket
         int outIndex[nBuckets];
         outIndex[0] = 0;
         for (int i = 1; i < nBuckets; ++i)
+			// 记录前一项 i-1 的 buckets 总共有多少个, 所以这个也是它的序号
             outIndex[i] = outIndex[i - 1] + bucketCount[i - 1];
 
         // Store sorted values in output array
         for (const MortonPrimitive &mp : in) {
             int bucket = (mp.mortonCode >> lowBit) & bitMask;
+			// 序号+1 记录内容
             out[outIndex[bucket]++] = mp;
         }
     }
     // Copy final result from _tempVector_, if needed
+	// 我们要返回的是 v
     if (nPasses & 1) std::swap(*v, tempVector);
 }
 
@@ -202,6 +217,7 @@ BVHAccel::BVHAccel(std::vector<std::shared_ptr<Primitive>> p,
 	// 存入 prim 的 index 和 bound
     std::vector<BVHPrimitiveInfo> primitiveInfo(primitives.size());
     for (size_t i = 0; i < primitives.size(); ++i)
+		// 这里记录了 i 是在 info 在 vector 中的位置
         primitiveInfo[i] = {i, primitives[i]->WorldBound()};
 
     // Build BVH tree for primitives using _primitiveInfo_
@@ -389,7 +405,7 @@ BVHBuildNode *BVHAccel::recursiveBuild(
                             b1 = Union(b1, buckets[j].bounds);
                             count1 += buckets[j].count;
                         }
-						// 这个 1 是 Ttrav 的代价, 但其实没什么用，用 0 都可以
+						// 这个 1 是 Ttrav 的代价, 有数学意义, 但是对比较来说没太大用处, 用 0.125,0 都可以
 						// 这里用的是 表面积 来表示概率 ???? 原因1: 射线只和表面相交
                         cost[i] = 1 +
                                   (count0 * b0.SurfaceArea() +
@@ -449,28 +465,35 @@ BVHBuildNode *BVHAccel::recursiveBuild(
     return node;
 }
 
+// 使用 Morton codes
 BVHBuildNode *BVHAccel::HLBVHBuild(
     MemoryArena &arena, const std::vector<BVHPrimitiveInfo> &primitiveInfo,
     int *totalNodes,
     std::vector<std::shared_ptr<Primitive>> &orderedPrims) const {
     // Compute bounding box of all primitive centroids
+	// LBVH 只考虑 Prim 的重心, 不会去关注他们实际的展开大小
     Bounds3f bounds;
     for (const BVHPrimitiveInfo &pi : primitiveInfo)
         bounds = Union(bounds, pi.centroid);
 
     // Compute Morton indices of primitives
+	// 得到总体的范围 Overrall Bounds, 计算每个 Prim 的 Morton Code
     std::vector<MortonPrimitive> mortonPrims(primitiveInfo.size());
+	// lambda 用法 & 表示 所有变量可以用引用的方式获取
     ParallelFor([&](int i) {
+		// 每组512个 prim
         // Initialize _mortonPrims[i]_ for _i_th primitive
         PBRT_CONSTEXPR int mortonBits = 10;
         PBRT_CONSTEXPR int mortonScale = 1 << mortonBits;
         mortonPrims[i].primitiveIndex = primitiveInfo[i].primitiveNumber;
-        Vector3f centroidOffset = bounds.Offset(primitiveInfo[i].centroid);
+        Vector3f centroidOffset = bounds.Offset(primitiveInfo[i].centroid); // 这里得到的是 [0,1] 的三维数组
         mortonPrims[i].mortonCode = EncodeMorton3(centroidOffset * mortonScale);
     }, primitiveInfo.size(), 512);
 
     // Radix sort primitive Morton indices
+	// 对 mortonPrim 排序
     RadixSort(&mortonPrims);
+	// 这里得到的结果, motronPrims 中的 Prim 已经是根据 他们的 MortonCode 排好序的了
 
     // Create LBVH treelets at bottom of BVH
 
@@ -479,6 +502,7 @@ BVHBuildNode *BVHAccel::HLBVHBuild(
     for (int start = 0, end = 1; end <= (int)mortonPrims.size(); ++end) {
 #ifdef PBRT_HAVE_BINARY_CONSTANTS
       uint32_t mask = 0b00111111111111000000000000000000;
+	  // 进行一次莫顿的分组, 前12个数字, 表示把整个空间分为了 2^12=4096 组, 每个维度是 2^4=16 组
 #else
       uint32_t mask = 0x3ffc0000;
 #endif
@@ -487,20 +511,23 @@ BVHBuildNode *BVHAccel::HLBVHBuild(
              (mortonPrims[end].mortonCode & mask))) {
             // Add entry to _treeletsToBuild_ for this treelet
             int nPrimitives = end - start;
-            int maxBVHNodes = 2 * nPrimitives;
-            BVHBuildNode *nodes = arena.Alloc<BVHBuildNode>(maxBVHNodes, false);
+            int maxBVHNodes = 2 * nPrimitives; // BVH树的节点数量, 是叶子节点的两倍 - 1
+			// false 表示不需要执行 BVHBuildNode 的初始构造函数, 因为在接下来的并发中, Node会执行一次构造, 这里做并发会消耗大量的性能
+            BVHBuildNode *nodes = arena.Alloc<BVHBuildNode>(maxBVHNodes, false); // 在线性内容中分配内存会更好 ????
             treeletsToBuild.push_back({start, nPrimitives, nodes});
             start = end;
         }
     }
 
     // Create LBVHs for treelets in parallel
+	// 并发的构建子树
+	// 记录总数, 偏移, 这些需要线程安全的操作
     std::atomic<int> atomicTotal(0), orderedPrimsOffset(0);
     orderedPrims.resize(primitives.size());
     ParallelFor([&](int i) {
         // Generate _i_th LBVH treelet
         int nodesCreated = 0;
-        const int firstBitIndex = 29 - 12;
+        const int firstBitIndex = 29 - 12; // 因为是30位的莫顿码, 分了 12 组, 所以他们的 Index 是 29-12
         LBVHTreelet &tr = treeletsToBuild[i];
         tr.buildNodes =
             emitLBVH(tr.buildNodes, primitiveInfo, &mortonPrims[tr.startIndex],
@@ -515,10 +542,12 @@ BVHBuildNode *BVHAccel::HLBVHBuild(
     finishedTreelets.reserve(treeletsToBuild.size());
     for (LBVHTreelet &treelet : treeletsToBuild)
         finishedTreelets.push_back(treelet.buildNodes);
+	// 因为这里只有 4096 棵树, 所以建立 SAH 会很快
     return buildUpperSAH(arena, finishedTreelets, 0, finishedTreelets.size(),
                          totalNodes);
 }
 
+// 子树也要继续做分割, 基于莫顿码的特性
 BVHBuildNode *BVHAccel::emitLBVH(
     BVHBuildNode *&buildNodes,
     const std::vector<BVHPrimitiveInfo> &primitiveInfo,
@@ -528,13 +557,15 @@ BVHBuildNode *BVHAccel::emitLBVH(
     CHECK_GT(nPrimitives, 0);
     if (bitIndex == -1 || nPrimitives < maxPrimsInNode) {
         // Create and return leaf node of LBVH treelet
+		// 当分到最细时, 或者当前节点数, 少于一个节点可以容纳的最大节点时(一般是4),创建一个叶子节点
         (*totalNodes)++;
-        BVHBuildNode *node = buildNodes++;
+        BVHBuildNode *node = buildNodes++; // buildNodes 递进, 因为新增了一个叶子节点
         Bounds3f bounds;
+		// 这个变量需要原子操作来执行
         int firstPrimOffset = orderedPrimsOffset->fetch_add(nPrimitives);
         for (int i = 0; i < nPrimitives; ++i) {
             int primitiveIndex = mortonPrims[i].primitiveIndex;
-            orderedPrims[firstPrimOffset + i] = primitives[primitiveIndex];
+            orderedPrims[firstPrimOffset + i] = primitives[primitiveIndex]; // 这样做是安全的, 因为只会修改到 firstPrimOffset - i
             bounds = Union(bounds, primitiveInfo[primitiveIndex].bounds);
         }
         node->InitLeaf(firstPrimOffset, nPrimitives, bounds);
@@ -544,11 +575,13 @@ BVHBuildNode *BVHAccel::emitLBVH(
         // Advance to next subtree level if there's no LBVH split for this bit
         if ((mortonPrims[0].mortonCode & mask) ==
             (mortonPrims[nPrimitives - 1].mortonCode & mask))
+			// 如果不可拆分的话, 那就走到下一级
             return emitLBVH(buildNodes, primitiveInfo, mortonPrims, nPrimitives,
                             totalNodes, orderedPrims, orderedPrimsOffset,
                             bitIndex - 1);
 
         // Find LBVH split point for this dimension
+		// 2分查找, 找到 mask & 不一致的位置
         int searchStart = 0, searchEnd = nPrimitives - 1;
         while (searchStart + 1 != searchEnd) {
             CHECK_NE(searchStart, searchEnd);
@@ -569,7 +602,7 @@ BVHBuildNode *BVHAccel::emitLBVH(
 
         // Create and return interior LBVH node
         (*totalNodes)++;
-        BVHBuildNode *node = buildNodes++;
+        BVHBuildNode *node = buildNodes++; // buildNodes 递进, 因为新增了一个中间节点
         BVHBuildNode *lbvh[2] = {
             emitLBVH(buildNodes, primitiveInfo, mortonPrims, splitOffset,
                      totalNodes, orderedPrims, orderedPrimsOffset,
@@ -577,12 +610,13 @@ BVHBuildNode *BVHAccel::emitLBVH(
             emitLBVH(buildNodes, primitiveInfo, &mortonPrims[splitOffset],
                      nPrimitives - splitOffset, totalNodes, orderedPrims,
                      orderedPrimsOffset, bitIndex - 1)};
-        int axis = bitIndex % 3;
-        node->InitInterior(axis, lbvh[0], lbvh[1]);
+        int axis = bitIndex % 3; // 区分的轴
+        node->InitInterior(axis, lbvh[0], lbvh[1]); // 这里也无需排序,  因为 lbvh[0] 的莫顿码 一定比 lbvh[1] 高
         return node;
     }
 }
 
+// 对 LBVH 做 SAH 算法
 BVHBuildNode *BVHAccel::buildUpperSAH(MemoryArena &arena,
                                       std::vector<BVHBuildNode *> &treeletRoots,
                                       int start, int end,

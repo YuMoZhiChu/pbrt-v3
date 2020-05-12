@@ -1,4 +1,4 @@
-# TODO: many of the best practices described here
+﻿# TODO: many of the best practices described here
 # (https://www.slideshare.net/DanielPfeifer1/cmake-48475415) are violated
 # in this file. Would be nice to address some of these.
 
@@ -140,6 +140,7 @@ CHECK_CXX_SOURCE_COMPILES (
   HAVE_CONSTEXPR )
 IF ( HAVE_CONSTEXPR )
   ADD_DEFINITIONS ( -D PBRT_HAVE_CONSTEXPR )
+  # 声明 costexpr, 这个表示 constexpr 在编译期就能计算出来, 优于 const
   ADD_DEFINITIONS ( -D PBRT_CONSTEXPR=constexpr )
 ELSE ()
   ADD_DEFINITIONS ( -D PBRT_CONSTEXPR=const )

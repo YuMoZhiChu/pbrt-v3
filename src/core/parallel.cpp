@@ -181,11 +181,13 @@ static void workerThreadFunc(int tIndex, std::shared_ptr<Barrier> barrier) {
 }
 
 // Parallel Definitions
+// count 总共计算数量, chunkSize 每组数量
 void ParallelFor(std::function<void(int64_t)> func, int64_t count,
                  int chunkSize) {
     CHECK(threads.size() > 0 || MaxThreadIndex() == 1);
 
     // Run iterations immediately if not using threads or if _count_ is small
+	// 退化成线性执行
     if (threads.empty() || count < chunkSize) {
         for (int64_t i = 0; i < count; ++i) func(i);
         return;
