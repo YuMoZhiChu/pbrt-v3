@@ -1408,7 +1408,7 @@ inline bool Bounds3<T>::IntersectP(const Ray &ray, Float *hitt0,
         Float tFar = (pMax[i] - ray.o[i]) * invRayDir;
 
         // Update parametric interval from slab intersection $t$ values
-        if (tNear > tFar) std::swap(tNear, tFar);
+        if (tNear > tFar) std::swap(tNear, tFar); // 这里的处理, 等同于 dirIsNeg 的处理
 
         // Update _tFar_ to ensure robust ray--bounds intersection
 		// 对于 Bound 的误差处理, 这里 tFar 经过3次运算, 所以用 gamma(3)
@@ -1434,6 +1434,7 @@ inline bool Bounds3<T>::IntersectP(const Ray &ray, const Vector3f &invDir,
                                    const int dirIsNeg[3]) const {
     const Bounds3f &bounds = *this;
     // Check for ray intersection against $x$ and $y$ slabs
+	// bounds[dirIsNeg[0]].x 表示选择 pMin 还是 pMax 本来 0-pMin, 1-pMax, 如果 dirIsNeg 是 1, 那么就反过来
     Float tMin = (bounds[dirIsNeg[0]].x - ray.o.x) * invDir.x;
     Float tMax = (bounds[1 - dirIsNeg[0]].x - ray.o.x) * invDir.x;
     Float tyMin = (bounds[dirIsNeg[1]].y - ray.o.y) * invDir.y;

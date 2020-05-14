@@ -85,7 +85,7 @@ struct BVHBuildNode {
     Bounds3f bounds;
 	// 非叶子节点, 记录他们的左右孩子
     BVHBuildNode *children[2];
-	// splitAixs 记录将 2个子节点 分开的轴, 提高遍历的效率
+	// splitAixs 记录将 2个子节点 分开的轴, 提高遍历的效率[在 InsertP 遍历中, 该轴对应的 Dir方向, 决定了先看左节点, 还是先看右节点, 因为我们求的是 hit min
 	// firstPrimOffset, nPrimitives 用于描述 叶子节点 包含的 primitive, [firstPrimOffset, firstPrimOffset+nPrimitives) 不包含右边
 	// 因此，需要对 prim 数组进行重新排序
     int splitAxis, firstPrimOffset, nPrimitives;
@@ -106,15 +106,16 @@ struct LBVHTreelet {
     BVHBuildNode *buildNodes;
 };
 
+// 线性节点的结构, 将2叉树做列表进行保存
 struct LinearBVHNode {
     Bounds3f bounds;
     union {
-        int primitivesOffset;   // leaf
-        int secondChildOffset;  // interior
+        int primitivesOffset;   // leaf  对于叶子节点, 这个相当于 BVHBuildNode 的 firstPrimOffset
+        int secondChildOffset;  // interior 记录中间节点的右节点, 它的偏移量
     };
-    uint16_t nPrimitives;  // 0 -> interior node
+    uint16_t nPrimitives;  // 0 -> interior node 中间节点是 0, 对于叶子节点, 这个相当于 BVHBuildNode 的 nPrimitives
     uint8_t axis;          // interior node: xyz
-    uint8_t pad[1];        // ensure 32 byte total size
+    uint8_t pad[1];        // ensure 32 byte total size 为了支持CPU的高速缓存架构, 这里做内存对齐
 };
 
 // BVHAccel Utility Functions
@@ -248,8 +249,9 @@ BVHAccel::BVHAccel(std::vector<std::shared_ptr<Primitive>> p,
     // Compute representation of depth-first traversal of BVH tree
     treeBytes += totalNodes * sizeof(LinearBVHNode) + sizeof(*this) +
                  primitives.size() * sizeof(primitives[0]);
-    nodes = AllocAligned<LinearBVHNode>(totalNodes);
+    nodes = AllocAligned<LinearBVHNode>(totalNodes); // 这里就是 totalNode 的用处 AllocAligned 是 _aligned_malloc 的高层封装
     int offset = 0;
+	// 二叉树压缩成线性
     flattenBVHTree(root, &offset);
     CHECK_EQ(totalNodes, offset);
 }
@@ -732,39 +734,50 @@ int BVHAccel::flattenBVHTree(BVHBuildNode *node, int *offset) {
         // Create interior flattened BVH node
         linearNode->axis = node->splitAxis;
         linearNode->nPrimitives = 0;
+		// 直接递归生成子树即可
         flattenBVHTree(node->children[0], offset);
         linearNode->secondChildOffset =
             flattenBVHTree(node->children[1], offset);
     }
+	// 返回这棵树 的 总体偏移  myOffset - origin_offset = 树的长度
     return myOffset;
 }
 
-BVHAccel::~BVHAccel() { FreeAligned(nodes); }
+BVHAccel::~BVHAccel() { FreeAligned(nodes);/*释放 nodes 的内存*/ }
 
 bool BVHAccel::Intersect(const Ray &ray, SurfaceInteraction *isect) const {
     if (!nodes) return false;
     ProfilePhase p(Prof::AccelIntersect);
     bool hit = false;
+	// 预计算一些内容
     Vector3f invDir(1 / ray.d.x, 1 / ray.d.y, 1 / ray.d.z);
     int dirIsNeg[3] = {invDir.x < 0, invDir.y < 0, invDir.z < 0};
     // Follow ray through BVH nodes to find primitive intersections
+	// toVisitOffset 栈记录 currentNodeIndex 在node列表中的偏移
     int toVisitOffset = 0, currentNodeIndex = 0;
-    int nodesToVisit[64];
+    int nodesToVisit[64]; // 深度遍历的栈
     while (true) {
+		// 开始遍历
         const LinearBVHNode *node = &nodes[currentNodeIndex];
         // Check ray against BVH node
         if (node->bounds.IntersectP(ray, invDir, dirIsNeg)) {
             if (node->nPrimitives > 0) {
+				// 这里是叶子节点
                 // Intersect ray with primitives in leaf BVH node
                 for (int i = 0; i < node->nPrimitives; ++i)
+					// 如果找到了交点, 很可能不止一个, 所以需要继续遍历
+					// 而且我们的 Intersect 会更新 tMax, 可以避免许多的判断
                     if (primitives[node->primitivesOffset + i]->Intersect(
                             ray, isect))
                         hit = true;
                 if (toVisitOffset == 0) break;
                 currentNodeIndex = nodesToVisit[--toVisitOffset];
             } else {
+				// 这里是中间节点
                 // Put far BVH node on _nodesToVisit_ stack, advance to near
                 // node
+				// 这里考虑到有2个子节点, 为了不让子节点进行后续的比较, 这里要从前往后
+				// 对于正向的 d, 我们先检测左节点, 后检测右节点, 反之亦然
                 if (dirIsNeg[node->axis]) {
                     nodesToVisit[toVisitOffset++] = currentNodeIndex + 1;
                     currentNodeIndex = node->secondChildOffset;

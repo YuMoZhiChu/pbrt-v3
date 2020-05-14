@@ -92,6 +92,7 @@ class BVHAccel : public Aggregate {
     const int maxPrimsInNode;
     const SplitMethod splitMethod;
     std::vector<std::shared_ptr<Primitive>> primitives;
+	// 结果, 构建 BVH 二叉树后, 压缩成线性的 nodes 节点
     LinearBVHNode *nodes = nullptr;
 };
 
