@@ -72,6 +72,7 @@ class KdTreeAccel : public Aggregate {
     std::vector<std::shared_ptr<Primitive>> primitives;
     std::vector<int> primitiveIndices;
     KdAccelNode *nodes;
+	// nAllocedNodes 节点总数 nodeFreeNode 记录下一个可用的Node
     int nAllocedNodes, nextFreeNode;
     Bounds3f bounds;
 };

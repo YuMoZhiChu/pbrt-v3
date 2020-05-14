@@ -1417,6 +1417,7 @@ inline bool Bounds3<T>::IntersectP(const Ray &ray, Float *hitt0,
         tFar *= 1 + 2 * gamma(3); // 因为可能通过误差错过一些相交的判断, 所以 tFar 要取大一点的值, 而且考虑到 tFar 和 tNear 的情况, 将其区间扩大成2倍
 		// tNear 不做误差处理的原因是, 因为它是和 0 去比较的
 		// 取更接近的区间
+		// 05-14 做误差分析, gamma(3) 即可, 但是 tFar,tNear 都会存在误差, 所以最极端的情况是 2*gamma(3) 所以在 tFar上 做一次 乘法即可
         t0 = tNear > t0 ? tNear : t0;
         t1 = tFar < t1 ? tFar : t1;
         if (t0 > t1) return false;
