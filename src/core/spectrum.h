@@ -45,8 +45,11 @@
 namespace pbrt {
 
 // Spectrum Utility Declarations
+// 采样光谱起点 [400,405) [405,410)
 static const int sampledLambdaStart = 400;
+// 采样光谱终点
 static const int sampledLambdaEnd = 700;
+// 采样光谱 采样数
 static const int nSpectralSamples = 60;
 extern bool SpectrumSamplesSorted(const Float *lambda, const Float *vals,
                                   int n);
@@ -125,14 +128,16 @@ class CoefficientSpectrum {
         }
         fprintf(f, "]");
     }
+	// 加法实现
     CoefficientSpectrum &operator+=(const CoefficientSpectrum &s2) {
         DCHECK(!s2.HasNaNs());
         for (int i = 0; i < nSpectrumSamples; ++i) c[i] += s2.c[i];
-        return *this;
+        return *this; // 这样做省去了一步构造函数
     }
+	// 加法实现
     CoefficientSpectrum operator+(const CoefficientSpectrum &s2) const {
         DCHECK(!s2.HasNaNs());
-        CoefficientSpectrum ret = *this;
+        CoefficientSpectrum ret = *this; // 这样做省去了一步构造函数
         for (int i = 0; i < nSpectrumSamples; ++i) ret.c[i] += s2.c[i];
         return ret;
     }
@@ -200,6 +205,7 @@ class CoefficientSpectrum {
     bool operator!=(const CoefficientSpectrum &sp) const {
         return !(*this == sp);
     }
+	// 如果这个光谱在各个波长上都是 0，那么可以用这个判断来跳过很多的反射计算
     bool IsBlack() const {
         for (int i = 0; i < nSpectrumSamples; ++i)
             if (c[i] != 0.) return false;
@@ -238,6 +244,7 @@ class CoefficientSpectrum {
         str += " ]";
         return str;
     }
+	// 限制范围
     CoefficientSpectrum Clamp(Float low = 0, Float high = Infinity) const {
         CoefficientSpectrum ret;
         for (int i = 0; i < nSpectrumSamples; ++i)
@@ -251,6 +258,7 @@ class CoefficientSpectrum {
             m = std::max(m, c[i]);
         return m;
     }
+	// 因为可能会发生 /0 的操作，提供一个接口
     bool HasNaNs() const {
         for (int i = 0; i < nSpectrumSamples; ++i)
             if (std::isnan(c[i])) return true;
@@ -269,6 +277,7 @@ class CoefficientSpectrum {
         }
         return true;
     }
+	// 因为某些情况，需要迭代表示一组光谱样本
     Float &operator[](int i) {
         DCHECK(i >= 0 && i < nSpectrumSamples);
         return c[i];
@@ -279,28 +288,36 @@ class CoefficientSpectrum {
     }
 
     // CoefficientSpectrum Public Data
+	// 这里因为是函数模板中的参数，这是一个静态变量
     static const int nSamples = nSpectrumSamples;
 
   protected:
     // CoefficientSpectrum Protected Data
+	// 一组波长上的恒定值
     Float c[nSpectrumSamples];
 };
 
 class SampledSpectrum : public CoefficientSpectrum<nSpectralSamples> {
   public:
     // SampledSpectrum Public Methods
+	// 简单的初始化
     SampledSpectrum(Float v = 0.f) : CoefficientSpectrum(v) {}
     SampledSpectrum(const CoefficientSpectrum<nSpectralSamples> &v)
         : CoefficientSpectrum<nSpectralSamples>(v) {}
+	// 我们会用一组 (lambda_i, v_i) 表示 SPD 的采样
+	// lambda_i 表示 波长
+	// v_i 表示在 lambda_i 上的值
     static SampledSpectrum FromSampled(const Float *lambda, const Float *v,
                                        int n) {
         // Sort samples if unordered, use sorted for returned spectrum
+		// 如果没有排序, 得先排序
         if (!SpectrumSamplesSorted(lambda, v, n)) {
             std::vector<Float> slambda(&lambda[0], &lambda[n]);
             std::vector<Float> sv(&v[0], &v[n]);
             SortSpectrumSamples(&slambda[0], &sv[0], n);
             return FromSampled(&slambda[0], &sv[0], n);
         }
+
         SampledSpectrum r;
         for (int i = 0; i < nSpectralSamples; ++i) {
             // Compute average value of given SPD over $i$th sample's range
@@ -308,6 +325,7 @@ class SampledSpectrum : public CoefficientSpectrum<nSpectralSamples> {
                                  sampledLambdaStart, sampledLambdaEnd);
             Float lambda1 = Lerp(Float(i + 1) / Float(nSpectralSamples),
                                  sampledLambdaStart, sampledLambdaEnd);
+			// lambda0, lambda1 是 [400, 405) [405, 410) ...
             r.c[i] = AverageSpectrumSamples(lambda, v, n, lambda0, lambda1);
         }
         return r;
@@ -426,6 +444,7 @@ class SampledSpectrum : public CoefficientSpectrum<nSpectralSamples> {
     static SampledSpectrum rgbIllum2SpectBlue;
 };
 
+// 高效的光谱表达，精度相比 SampledSpectrum 会较低
 class RGBSpectrum : public CoefficientSpectrum<3> {
     using CoefficientSpectrum<3>::c;
 
@@ -461,6 +480,7 @@ class RGBSpectrum : public CoefficientSpectrum<3> {
     }
 	// ???? 这个权重算法的意义是什么
     Float y() const {
+		// 这个是线性空间的图像，RGB转灰度的参数 https://www.zhihu.com/question/22039410
         const Float YWeight[3] = {0.212671f, 0.715160f, 0.072169f};
         return YWeight[0] * c[0] + YWeight[1] * c[1] + YWeight[2] * c[2];
     }

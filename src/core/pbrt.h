@@ -126,6 +126,7 @@ class SampledSpectrum;
 #ifdef PBRT_SAMPLED_SPECTRUM
   typedef SampledSpectrum Spectrum;
 #else
+// 更高效，但是准确性会较低
   typedef RGBSpectrum Spectrum;
 #endif
 class Camera;

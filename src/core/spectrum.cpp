@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -56,33 +56,46 @@ void SortSpectrumSamples(Float *lambda, Float *vals, int n) {
     }
 }
 
+// 计算光谱采样的平均值
+// 这里对于散点的分布，采样用的是 积分面积 除以 宽度 来实现 平均值的采样的
 Float AverageSpectrumSamples(const Float *lambda, const Float *vals, int n,
                              Float lambdaStart, Float lambdaEnd) {
     for (int i = 0; i < n - 1; ++i) CHECK_GT(lambda[i + 1], lambda[i]);
     CHECK_LT(lambdaStart, lambdaEnd);
     // Handle cases with out-of-bounds range or single sample only
+	// 特殊情况的处理
     if (lambdaEnd <= lambda[0]) return vals[0];
     if (lambdaStart >= lambda[n - 1]) return vals[n - 1];
     if (n == 1) return vals[0];
+
+	// 计算积分
     Float sum = 0;
     // Add contributions of constant segments before/after samples
+	// 如果第一个lambda点在我们要获取的区间的右方，直接加上水平的面积 （最后一个点也是这样
     if (lambdaStart < lambda[0]) sum += vals[0] * (lambda[0] - lambdaStart);
     if (lambdaEnd > lambda[n - 1])
         sum += vals[n - 1] * (lambdaEnd - lambda[n - 1]);
 
     // Advance to first relevant wavelength segment
     int i = 0;
+	// 找到第一个点，因为只需要在初始化的时候做，所以直接遍历而不是用二分法
+	// 这里没有问题是因为 if (lambdaStart >= lambda[n - 1]) return vals[n - 1]; 已经做了判断
+	// 所以我们一定能找到一个 i, 使得 lambda[i] < lambdaStart < lambda[i+1]
     while (lambdaStart > lambda[i + 1]) ++i;
     CHECK_LT(i + 1, n);
 
+	// 这里的设计很精妙，值得学习
     // Loop over wavelength sample segments and add contributions
     auto interp = [lambda, vals](Float w, int i) {
+		// 插值得到对应的边
         return Lerp((w - lambda[i]) / (lambda[i + 1] - lambda[i]), vals[i],
                     vals[i + 1]);
     };
     for (; i + 1 < n && lambdaEnd >= lambda[i]; ++i) {
         Float segLambdaStart = std::max(lambdaStart, lambda[i]);
         Float segLambdaEnd = std::min(lambdaEnd, lambda[i + 1]);
+		// 加上梯形面积
+		// 如果是 segLambdaStart 是 lambda[i] 在 lerp 中就重叠了
         sum += 0.5 * (interp(segLambdaStart, i) + interp(segLambdaEnd, i)) *
                (segLambdaEnd - segLambdaStart);
     }
