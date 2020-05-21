@@ -56,6 +56,8 @@ extern bool SpectrumSamplesSorted(const Float *lambda, const Float *vals,
 extern void SortSpectrumSamples(Float *lambda, Float *vals, int n);
 extern Float AverageSpectrumSamples(const Float *lambda, const Float *vals,
                                     int n, Float lambdaStart, Float lambdaEnd);
+// 个人理解
+// 这里其实相当于一个三维的基底转换, XYZ 基底 和 RGB 基底, 而且 他们都能计算出来
 inline void XYZToRGB(const Float xyz[3], Float rgb[3]) {
     rgb[0] = 3.240479f * xyz[0] - 1.537150f * xyz[1] - 0.498535f * xyz[2];
     rgb[1] = -0.969256f * xyz[0] + 1.875991f * xyz[1] + 0.041556f * xyz[2];
@@ -76,12 +78,16 @@ extern void BlackbodyNormalized(const Float *lambda, int n, Float T,
                                 Float *vals);
 
 // Spectral Data Declarations
+// 采样数, 以及对应的 XYZ 的 lambda 函数
+// 这里的思路就是用 样本 来描述曲线
 static const int nCIESamples = 471;
 extern const Float CIE_X[nCIESamples];
 extern const Float CIE_Y[nCIESamples];
 extern const Float CIE_Z[nCIESamples];
+// 表示波长范围从 360nm - 830nm
 extern const Float CIE_lambda[nCIESamples];
-static const Float CIE_Y_integral = 106.856895;
+static const Float CIE_Y_integral = 106.856895; // ???? Magic Number 不知道为什么这么乘
+// 用于 反射体 或者 发光体 将 RGB 转换成 SPD 的做法
 static const int nRGB2SpectSamples = 32;
 extern const Float RGB2SpectLambda[nRGB2SpectSamples];
 extern const Float RGBRefl2SpectWhite[nRGB2SpectSamples];
@@ -297,6 +303,7 @@ class CoefficientSpectrum {
     Float c[nSpectrumSamples];
 };
 
+// ???? 这里我们定义一个 跟 lambda 也是波长相关的内容目的是什么？目前来看，只是用于转化出 RGB 的值
 class SampledSpectrum : public CoefficientSpectrum<nSpectralSamples> {
   public:
     // SampledSpectrum Public Methods
@@ -330,8 +337,11 @@ class SampledSpectrum : public CoefficientSpectrum<nSpectralSamples> {
         }
         return r;
     }
+	// 光谱 基础数据的初始化
+	// 会在 pbrtInit 中调用
     static void Init() {
         // Compute XYZ matching functions for _SampledSpectrum_
+		// 这里只做 nSpectralSamples 个采样
         for (int i = 0; i < nSpectralSamples; ++i) {
             Float wl0 = Lerp(Float(i) / Float(nSpectralSamples),
                              sampledLambdaStart, sampledLambdaEnd);
@@ -396,6 +406,7 @@ class SampledSpectrum : public CoefficientSpectrum<nSpectralSamples> {
         }
     }
     void ToXYZ(Float xyz[3]) const {
+		// 这里的 012 分别指 xyz
         xyz[0] = xyz[1] = xyz[2] = 0.f;
         for (int i = 0; i < nSpectralSamples; ++i) {
             xyz[0] += X.c[i] * c[i];
@@ -403,11 +414,12 @@ class SampledSpectrum : public CoefficientSpectrum<nSpectralSamples> {
             xyz[2] += Z.c[i] * c[i];
         }
         Float scale = Float(sampledLambdaEnd - sampledLambdaStart) /
-                      Float(CIE_Y_integral * nSpectralSamples);
+                      Float(CIE_Y_integral * nSpectralSamples); // ???? Magic Number 一个计算
         xyz[0] *= scale;
         xyz[1] *= scale;
         xyz[2] *= scale;
     }
+	// y 参数和 Luminance 有关 与人眼的感光很有关系
     Float y() const {
         Float yy = 0.f;
         for (int i = 0; i < nSpectralSamples; ++i) yy += Y.c[i] * c[i];
@@ -433,6 +445,8 @@ class SampledSpectrum : public CoefficientSpectrum<nSpectralSamples> {
 
   private:
     // SampledSpectrum Private Data
+	// 这里的光谱, 他们本身都是 static SampledSpectrum, 都会在 Init 进行初始化
+	// c[i] 就是对应的函数值
     static SampledSpectrum X, Y, Z;
     static SampledSpectrum rgbRefl2SpectWhite, rgbRefl2SpectCyan;
     static SampledSpectrum rgbRefl2SpectMagenta, rgbRefl2SpectYellow;

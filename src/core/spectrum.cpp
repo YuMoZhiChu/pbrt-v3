@@ -38,12 +38,15 @@
 namespace pbrt {
 
 // Spectrum Method Definitions
+
+// 是否排了序的判断
 bool SpectrumSamplesSorted(const Float *lambda, const Float *vals, int n) {
     for (int i = 0; i < n - 1; ++i)
         if (lambda[i] > lambda[i + 1]) return false;
     return true;
 }
 
+// 2个数组一起排序
 void SortSpectrumSamples(Float *lambda, Float *vals, int n) {
     std::vector<std::pair<Float, Float>> sortVec;
     sortVec.reserve(n);
@@ -58,6 +61,7 @@ void SortSpectrumSamples(Float *lambda, Float *vals, int n) {
 
 // 计算光谱采样的平均值
 // 这里对于散点的分布，采样用的是 积分面积 除以 宽度 来实现 平均值的采样的
+// 返回的就是 从 lambdaStart 到 lambdaEnd，在对应光谱上的值
 Float AverageSpectrumSamples(const Float *lambda, const Float *vals, int n,
                              Float lambdaStart, Float lambdaEnd) {
     for (int i = 0; i < n - 1; ++i) CHECK_GT(lambda[i + 1], lambda[i]);
@@ -102,6 +106,7 @@ Float AverageSpectrumSamples(const Float *lambda, const Float *vals, int n,
     return sum / (lambdaEnd - lambdaStart);
 }
 
+// 转化函数, 返回一个 RGB光谱
 RGBSpectrum SampledSpectrum::ToRGBSpectrum() const {
     Float rgb[3];
     ToRGB(rgb);
@@ -111,14 +116,18 @@ RGBSpectrum SampledSpectrum::ToRGBSpectrum() const {
 SampledSpectrum SampledSpectrum::FromRGB(const Float rgb[3],
                                          SpectrumType type) {
     SampledSpectrum r;
+	// 分反射体 和 发光体 来构建他们的 SPD
     if (type == SpectrumType::Reflectance) {
         // Convert reflectance spectrum to RGB
         if (rgb[0] <= rgb[1] && rgb[0] <= rgb[2]) {
+			// 找一个最小的色系，如果是 R 红色最小，那么 G 和 B 一定比红色大
             // Compute reflectance _SampledSpectrum_ with _rgb[0]_ as minimum
             r += rgb[0] * rgbRefl2SpectWhite;
+			// 剩下的颜色，就是 (0, g-r, b-r)
             if (rgb[1] <= rgb[2]) {
-                r += (rgb[1] - rgb[0]) * rgbRefl2SpectCyan;
-                r += (rgb[2] - rgb[1]) * rgbRefl2SpectBlue;
+				// 补上剩下的颜色
+                r += (rgb[1] - rgb[0]) * rgbRefl2SpectCyan; // 这里是 绿色和蓝色 共同多出的部分 所以是 青色
+                r += (rgb[2] - rgb[1]) * rgbRefl2SpectBlue; // 这里是 蓝色
             } else {
                 r += (rgb[2] - rgb[0]) * rgbRefl2SpectCyan;
                 r += (rgb[1] - rgb[2]) * rgbRefl2SpectGreen;
