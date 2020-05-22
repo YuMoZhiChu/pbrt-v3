@@ -410,6 +410,7 @@ inline int CountTrailingZeros(uint32_t v) {
 #endif
 }
 
+// 标准的二分法查找 pred 传入一个判断函数
 template <typename Predicate>
 int FindInterval(int size, const Predicate &pred) {
     int first = 0, len = size;
@@ -418,7 +419,7 @@ int FindInterval(int size, const Predicate &pred) {
         // Bisect range based on value of _pred_ at _middle_
         if (pred(middle)) {
             first = middle + 1;
-            len -= half + 1;
+            len -= half + 1; // 这里的 +1 是考量到了 中间这个数
         } else
             len = half;
     }

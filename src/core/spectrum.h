@@ -465,11 +465,13 @@ class RGBSpectrum : public CoefficientSpectrum<3> {
   public:
     // RGBSpectrum Public Methods
     RGBSpectrum(Float v = 0.f) : CoefficientSpectrum<3>(v) {}
+	// 012 表示 rgb
     RGBSpectrum(const CoefficientSpectrum<3> &v) : CoefficientSpectrum<3>(v) {}
     RGBSpectrum(const RGBSpectrum &s,
                 SpectrumType type = SpectrumType::Reflectance) {
         *this = s;
     }
+	// SpectrumType type 是统一接口, 在这里没有实际作用
     static RGBSpectrum FromRGB(const Float rgb[3],
                                SpectrumType type = SpectrumType::Reflectance) {
         RGBSpectrum s;
@@ -498,6 +500,7 @@ class RGBSpectrum : public CoefficientSpectrum<3> {
         const Float YWeight[3] = {0.212671f, 0.715160f, 0.072169f};
         return YWeight[0] * c[0] + YWeight[1] * c[1] + YWeight[2] * c[2];
     }
+	// 传入一条 SPD 光谱，构造一个 RGB光谱 （其实就是算 RGB
     static RGBSpectrum FromSampled(const Float *lambda, const Float *v, int n) {
         // Sort samples if unordered, use sorted for returned spectrum
         if (!SpectrumSamplesSorted(lambda, v, n)) {
@@ -507,6 +510,7 @@ class RGBSpectrum : public CoefficientSpectrum<3> {
             return FromSampled(&slambda[0], &sv[0], n);
         }
         Float xyz[3] = {0, 0, 0};
+		// 求黎曼和
         for (int i = 0; i < nCIESamples; ++i) {
             Float val = InterpolateSpectrumSamples(lambda, v, n, CIE_lambda[i]);
             xyz[0] += val * CIE_X[i];
@@ -518,6 +522,7 @@ class RGBSpectrum : public CoefficientSpectrum<3> {
         xyz[0] *= scale;
         xyz[1] *= scale;
         xyz[2] *= scale;
+		// 逻辑是一样的，不过先算 XYZ，再算 RGB
         return FromXYZ(xyz);
     }
 };
