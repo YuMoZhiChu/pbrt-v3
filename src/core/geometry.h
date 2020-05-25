@@ -1476,11 +1476,13 @@ inline Point3f OffsetRayOrigin(const Point3f &p, const Vector3f &pError,
     return po;
 }
 
+// 球坐标系转xyz
 inline Vector3f SphericalDirection(Float sinTheta, Float cosTheta, Float phi) {
     return Vector3f(sinTheta * std::cos(phi), sinTheta * std::sin(phi),
                     cosTheta);
 }
 
+// 球坐标系转xyz，带自定义坐标轴
 inline Vector3f SphericalDirection(Float sinTheta, Float cosTheta, Float phi,
                                    const Vector3f &x, const Vector3f &y,
                                    const Vector3f &z) {
@@ -1488,10 +1490,12 @@ inline Vector3f SphericalDirection(Float sinTheta, Float cosTheta, Float phi,
            cosTheta * z;
 }
 
+// XYZ 转球坐标系，求 θ，对z做了 [-1,1] 的规范化处理
 inline Float SphericalTheta(const Vector3f &v) {
     return std::acos(Clamp(v.z, -1, 1));
 }
 
+// XYZ 转球坐标系，求 φ
 inline Float SphericalPhi(const Vector3f &v) {
     Float p = std::atan2(v.y, v.x);
     return (p < 0) ? (p + 2 * Pi) : p;
