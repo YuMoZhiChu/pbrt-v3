@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -57,6 +57,7 @@ Camera::Camera(const AnimatedTransform &CameraToWorld, Float shutterOpen,
             "the system may crash as a result of this.");
 }
 
+// 计算微分，这个计算结果对抗锯齿算法非常有用
 Float Camera::GenerateRayDifferential(const CameraSample &sample,
                                       RayDifferential *rd) const {
     Float wt = GenerateRay(sample, rd);
@@ -69,8 +70,10 @@ Float Camera::GenerateRayDifferential(const CameraSample &sample,
         sshift.pFilm.x += eps;
         Ray rx;
         wtx = GenerateRay(sshift, &rx);
-        rd->rxOrigin = rd->o + (rx.o - rd->o) / eps;
+        rd->rxOrigin = rd->o + (rx.o - rd->o) / eps;// 个人的理解，(rx.o - rd->o) / eps 这里是有物理意义的，其意义就是切线的斜率
+		//  rd->o + 其实没啥意义，只是用 rxOrigin 一减，就能得到切线
         rd->rxDirection = rd->d + (rx.d - rd->d) / eps;
+		// 先算 +.05
         if (wtx != 0)
             break;
     }

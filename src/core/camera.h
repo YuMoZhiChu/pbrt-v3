@@ -50,12 +50,15 @@ namespace pbrt {
 class Camera {
   public:
     // Camera Interface
+	// 相机的初始化，最重要的就是 CameraToWorld 这个参数代表坐标系的转换，而且它是一个 AnimatedTransform，可以拆解成 TRS，进行动态插值
     Camera(const AnimatedTransform &CameraToWorld, Float shutterOpen,
            Float shutterClose, Film *film, const Medium *medium);
     virtual ~Camera();
 	// 对给定的采样点 CameraSample
 	// returns a floating-point weight associated with the ray
+	// 返回一个浮点值，这个值会影响最终的权重，简单的摄像机返回的是1，真实的摄像机，会根据光穿透镜片携带多少能量，来计算这个数
 	// 在简单照相机中, Ray 的权重是一样的
+	// 05-28：给入 Sample， 计算 Ray，这里的 Ray.d 会做 normalized
     virtual Float GenerateRay(const CameraSample &sample, Ray *ray) const = 0;
 	// 根据采样点 CameraSample 生成 Ray, 还包含了 在 Pixel 在 Image 平面上 关于 x,y方向 的微分
 	// 微分的数据 -> pixel spacing -> texture antialiasing 抗锯齿算法
@@ -69,21 +72,28 @@ class Camera {
 
     // Camera Public Data
     AnimatedTransform CameraToWorld;
+	// 快门的开关时间点，用于实现动态模糊的效果
     const Float shutterOpen, shutterClose;
 	// handles image storage
+	// 指向一张 film，用于显示最终的图像
     Film *film;
+	// 介质，照相机所处的散射环境的介质（???? 可能是水下拍摄的做法
     const Medium *medium;
 };
 
+// 这里面的信息，足够用来生成一套射线了
 struct CameraSample {
 	// the position on the film for which the camera should generate the corresponding ray
 	// film 上的位置
+	// 在 film 上，能找到对应的点，和对应的 radiance
     Point2f pFilm;
 	// for camera models that simulate non-pinhole apertures
 	// ???? 用于非针孔模型的摄像机
+	// ???? 啥意思 The point on the lens the ray passes through is in pLens (for cameras that include the notion of lenses),
     Point2f pLens;
 	// used when rendering scenes with moving objects
 	// 渲染移动物体时用
+	// interpolate within the shutterOpen–shutterClose time range
     Float time;
 };
 

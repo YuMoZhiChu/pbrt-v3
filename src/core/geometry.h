@@ -915,6 +915,7 @@ class RayDifferential : public Ray {
                 (rxOrigin.HasNaNs() || ryOrigin.HasNaNs() ||
                  rxDirection.HasNaNs() || ryDirection.HasNaNs()));
     }
+	// 这里放大的是微分的倍数, 因为 rxOrigin - o 的数学意义是切线
     void ScaleDifferentials(Float s) {
         rxOrigin = o + (rxOrigin - o) * s;
         ryOrigin = o + (ryOrigin - o) * s;
