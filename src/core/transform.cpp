@@ -305,6 +305,7 @@ SurfaceInteraction Transform::operator()(const SurfaceInteraction &si) const {
     return ret;
 }
 
+// 移动到 ZNear，然后做缩放
 Transform Orthographic(Float zNear, Float zFar) {
     return Scale(1, 1, 1 / (zFar - zNear)) * Translate(Vector3f(0, 0, -zNear));
 }

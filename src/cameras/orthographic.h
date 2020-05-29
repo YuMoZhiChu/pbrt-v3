@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -53,10 +53,13 @@ class OrthographicCamera : public ProjectiveCamera {
                        const Bounds2f &screenWindow, Float shutterOpen,
                        Float shutterClose, Float lensRadius,
                        Float focalDistance, Film *film, const Medium *medium)
+		// 用 Orthographic 函数来初始化 CameraToScreen 矩阵
         : ProjectiveCamera(CameraToWorld, Orthographic(0, 1), screenWindow,
                            shutterOpen, shutterClose, lensRadius, focalDistance,
                            film, medium) {
         // Compute differential changes in origin for orthographic camera rays
+		// 在光栅化空间，1就代表一个 resolution 单位的位移，然后把它映射到相机空间中
+		// 因为是正交空间，所以这个计算直接这样即可
         dxCamera = RasterToCamera(Vector3f(1, 0, 0));
         dyCamera = RasterToCamera(Vector3f(0, 1, 0));
     }

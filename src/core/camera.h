@@ -127,8 +127,9 @@ class ProjectiveCamera : public Camera {
             Scale(1 / (screenWindow.pMax.x - screenWindow.pMin.x),
                   1 / (screenWindow.pMin.y - screenWindow.pMax.y), 1) *
             Translate(Vector3f(-screenWindow.pMin.x, -screenWindow.pMax.y, 0));
+		// 这里是右乘的乘法，所以从下往上读
         RasterToScreen = Inverse(ScreenToRaster);
-        RasterToCamera = Inverse(CameraToScreen) * RasterToScreen;
+        RasterToCamera = Inverse(CameraToScreen) * RasterToScreen; // TODO 这里是线性代数知识，左手系+行优先矩阵，就是这种乘法，右乘的乘法
     }
 
   protected:
