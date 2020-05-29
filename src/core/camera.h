@@ -106,8 +106,10 @@ inline std::ostream &operator<<(std::ostream &os, const CameraSample &cs) {
 class ProjectiveCamera : public Camera {
   public:
     // ProjectiveCamera Public Methods
+	// screenWindow: 屏幕大小范围
+	// focald: 聚焦距离，用于模拟真实相机的失焦
     ProjectiveCamera(const AnimatedTransform &CameraToWorld,
-                     const Transform &CameraToScreen,
+                     const Transform &CameraToScreen, // 投影矩阵
                      const Bounds2f &screenWindow, Float shutterOpen,
                      Float shutterClose, Float lensr, Float focald, Film *film,
                      const Medium *medium)
