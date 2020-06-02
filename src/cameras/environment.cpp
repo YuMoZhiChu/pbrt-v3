@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -44,10 +44,11 @@ Float EnvironmentCamera::GenerateRay(const CameraSample &sample,
                                      Ray *ray) const {
     ProfilePhase prof(Prof::GenerateCameraRay);
     // Compute environment camera ray direction
+	// 这里映射到 θ,φ
     Float theta = Pi * sample.pFilm.y / film->fullResolution.y;
     Float phi = 2 * Pi * sample.pFilm.x / film->fullResolution.x;
     Vector3f dir(std::sin(theta) * std::cos(phi), std::cos(theta),
-                 std::sin(theta) * std::sin(phi));
+                 std::sin(theta) * std::sin(phi)); // 这里 y和z 做了互换，因为y轴，是摄像机空间的上向量，z是dir方向向量，所以做了交换
     *ray = Ray(Point3f(0, 0, 0), dir, Infinity,
                Lerp(sample.time, shutterOpen, shutterClose));
     ray->medium = medium;

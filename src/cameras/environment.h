@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -45,11 +45,13 @@
 namespace pbrt {
 
 // EnvironmentCamera Declarations
+// 全景相机
 class EnvironmentCamera : public Camera {
   public:
     // EnvironmentCamera Public Methods
     EnvironmentCamera(const AnimatedTransform &CameraToWorld, Float shutterOpen,
                       Float shutterClose, Film *film, const Medium *medium)
+		// 因为该相机不是线性的，所以不能使用 4*4 矩阵来描述，（即投影相机的 NDC 光栅化那一套不能用
         : Camera(CameraToWorld, shutterOpen, shutterClose, film, medium) {}
     Float GenerateRay(const CameraSample &sample, Ray *) const;
 };

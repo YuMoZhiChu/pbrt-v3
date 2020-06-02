@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -76,6 +76,8 @@ Float PerspectiveCamera::GenerateRay(const CameraSample &sample,
     // Modify ray for depth of field
     if (lensRadius > 0) {
         // Sample point on lens
+		// 在透镜附近，做对应的采样映射（这个函数暂时理解成将 uv 采样映射入 [0, 1)^2 的映射即可
+		// TODO ???? 这里跟采样有关的逻辑，它的原理是什么
         Point2f pLens = lensRadius * ConcentricSampleDisk(sample.pLens);
 
         // Compute point on plane of focus
@@ -83,6 +85,7 @@ Float PerspectiveCamera::GenerateRay(const CameraSample &sample,
         Point3f pFocus = (*ray)(ft);
 
         // Update ray for effect of lens
+		// 因为透镜的关系，所以我们偏移出射光
         ray->o = Point3f(pLens.x, pLens.y, 0);
         ray->d = Normalize(pFocus - ray->o);
     }
