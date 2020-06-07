@@ -312,10 +312,12 @@ Transform Orthographic(Float zNear, Float zFar) {
 
 Transform Perspective(Float fov, Float n, Float f) {
     // Perform projective divide for perspective projection
+	// 第一步，构建 Z 缩放映射
     Matrix4x4 persp(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, f / (f - n), -f * n / (f - n),
                     0, 0, 1, 0);
 
     // Scale canonical perspective view to specified field of view
+	// 用 tan 处理，使得 xy 都映射到 [-1,1]
     Float invTanAng = 1 / std::tan(Radians(fov) / 2);
     return Scale(invTanAng, invTanAng, 1) * Transform(persp);
 }
