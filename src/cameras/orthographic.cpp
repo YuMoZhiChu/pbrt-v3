@@ -45,10 +45,14 @@ Float OrthographicCamera::GenerateRay(const CameraSample &sample,
                                       Ray *ray) const {
     ProfilePhase prof(Prof::GenerateCameraRay);
     // Compute raster and camera sample positions
+	// 在 pFilm 上采样
     Point3f pFilm = Point3f(sample.pFilm.x, sample.pFilm.y, 0);
+	// 转换到 Camera 空间
     Point3f pCamera = RasterToCamera(pFilm);
+	// 因为是正交坐标系，所以射线方向默认是  0,0,1
     *ray = Ray(pCamera, Vector3f(0, 0, 1));
     // Modify ray for depth of field
+	// 如果有景深，会对 Ray 的 O 和 d 做调整
     if (lensRadius > 0) {
         // Sample point on lens
         Point2f pLens = lensRadius * ConcentricSampleDisk(sample.pLens);
@@ -61,8 +65,10 @@ Float OrthographicCamera::GenerateRay(const CameraSample &sample,
         ray->o = Point3f(pLens.x, pLens.y, 0);
         ray->d = Normalize(pFocus - ray->o);
     }
+	// 时间用参数做插值
     ray->time = Lerp(sample.time, shutterOpen, shutterClose);
     ray->medium = medium;
+	// 切换到世界坐标系
     *ray = CameraToWorld(*ray);
     return 1;
 }
@@ -107,6 +113,8 @@ Float OrthographicCamera::GenerateRayDifferential(const CameraSample &sample,
         ray->ryOrigin = Point3f(pLens.x, pLens.y, 0);
         ray->ryDirection = Normalize(pFocus - ray->ryOrigin);
     } else {
+		// 这种情况下，微分不管是多少倍的采样，ray->rxDirection 都不会变，只会变 ray->rxOrigin xy方向的微分距离
+		// ray->rxDirection = ray->ryDirection = ray->d; 所以 ray->任何D 都是 (0,0,1)
         ray->rxOrigin = ray->o + dxCamera;
         ray->ryOrigin = ray->o + dyCamera;
         ray->rxDirection = ray->ryDirection = ray->d;
