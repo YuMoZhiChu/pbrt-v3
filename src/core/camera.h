@@ -90,6 +90,7 @@ struct CameraSample {
 	// for camera models that simulate non-pinhole apertures
 	// ???? 用于非针孔模型的摄像机
 	// ???? 啥意思 The point on the lens the ray passes through is in pLens (for cameras that include the notion of lenses),
+	// ???? TODO 景深相关的参数, 暂时不考虑
     Point2f pLens;
 	// used when rendering scenes with moving objects
 	// 渲染移动物体时用

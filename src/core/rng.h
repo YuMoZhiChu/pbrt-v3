@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -48,8 +48,8 @@ namespace pbrt {
 static const double DoubleOneMinusEpsilon = 0.99999999999999989;
 static const float FloatOneMinusEpsilon = 0.99999994;
 #else
-static const double DoubleOneMinusEpsilon = 0x1.fffffffffffffp-1;
-static const float FloatOneMinusEpsilon = 0x1.fffffep-1;
+	static const double DoubleOneMinusEpsilon = 0.99999999999999989;// 0x1.fffffffffffffp-1;
+	static const float FloatOneMinusEpsilon = 0.99999994;// 0x1.fffffep-1;
 #endif
 
 #ifdef PBRT_FLOAT_AS_DOUBLE
@@ -80,7 +80,7 @@ class RNG {
         return std::min(OneMinusEpsilon,
                         Float(UniformUInt32() * 2.3283064365386963e-10f));
 #else
-        return std::min(OneMinusEpsilon, Float(UniformUInt32() * 0x1p-32f));
+		return std::min(OneMinusEpsilon, Float(UniformUInt32() * 2.3283064365386963e-10f));// 0x1p-32f));
 #endif
     }
     template <typename Iterator>

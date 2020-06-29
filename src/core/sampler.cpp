@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -52,6 +52,8 @@ CameraSample Sampler::GetCameraSample(const Point2i &pRaster) {
 }
 
 void Sampler::StartPixel(const Point2i &p) {
+	// 重置采样位置，维度数组偏移记录
+	// 如果子类重写 StartPixel，需要显示调用 Sampler::StartPixel
     currentPixel = p;
     currentPixelSampleIndex = 0;
     // Reset array offsets for next pixel sample
@@ -60,20 +62,26 @@ void Sampler::StartPixel(const Point2i &p) {
 
 bool Sampler::StartNextSample() {
     // Reset array offsets for next pixel sample
+	// 采样样本 下标 +1，重置维度数组偏移记录
+	// 如果子类重写 StartNextSample，需要显示调用 Sampler::StartNextSample
     array1DOffset = array2DOffset = 0;
     return ++currentPixelSampleIndex < samplesPerPixel;
 }
 
 bool Sampler::SetSampleNumber(int64_t sampleNum) {
     // Reset array offsets for next pixel sample
+	// 设置对第几个样本采样
     array1DOffset = array2DOffset = 0;
     currentPixelSampleIndex = sampleNum;
     return currentPixelSampleIndex < samplesPerPixel;
 }
 
 void Sampler::Request1DArray(int n) {
+	// 检查是否符合，合适的维度数据长度（默认是直接相等
     CHECK_EQ(RoundCount(n), n);
+	// 记录大小
     samples1DArraySizes.push_back(n);
+	// 样本数量 * 一个样本在该维度的数据长度
     sampleArray1D.push_back(std::vector<Float>(n * samplesPerPixel));
 }
 
@@ -87,6 +95,7 @@ const Float *Sampler::Get1DArray(int n) {
     if (array1DOffset == sampleArray1D.size()) return nullptr;
     CHECK_EQ(samples1DArraySizes[array1DOffset], n);
     CHECK_LT(currentPixelSampleIndex, samplesPerPixel);
+	// 返回的是 array1DOffset 维度下，currentPixelSampleIndex * n 开始，记录的是 currentPixelSampleIndex 的样本数据
     return &sampleArray1D[array1DOffset++][currentPixelSampleIndex * n];
 }
 
