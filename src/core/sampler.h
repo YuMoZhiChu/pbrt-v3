@@ -111,6 +111,7 @@ class Sampler {
 class PixelSampler : public Sampler {
   public:
     // PixelSampler Public Methods
+	// Pixel Sampler 会多传入一个最大维度，当超过这个最大维度时，返回一个归一化[0,1)的随机数
     PixelSampler(int64_t samplesPerPixel, int nSampledDimensions);
     bool StartNextSample();
     bool SetSampleNumber(int64_t);
@@ -119,28 +120,38 @@ class PixelSampler : public Sampler {
 
   protected:
     // PixelSampler Protected Data
+	// 用二次vector 来记录所有的 1D 和 2D 数据
     std::vector<std::vector<Float>> samples1D;
     std::vector<std::vector<Point2f>> samples2D;
+	// 记录1D和2D 的当前偏移
     int current1DDimension = 0, current2DDimension = 0;
     RNG rng;
 };
 
+// Global 采样器的思想是
+// 采样的样本 -> 采样的像素区域, 这是一个 多 -> 1 的映射
 class GlobalSampler : public Sampler {
   public:
     // GlobalSampler Public Methods
     bool StartNextSample();
+	// 为某个像素点，开始生成样本
     void StartPixel(const Point2i &);
     bool SetSampleNumber(int64_t sampleNum);
     Float Get1D();
     Point2f Get2D();
     GlobalSampler(int64_t samplesPerPixel) : Sampler(samplesPerPixel) {}
+	// 根据当前的采样的像素区域，获取第 sampleNum 个样本，在样本总表的位置
     virtual int64_t GetIndexForSample(int64_t sampleNum) const = 0;
+	// 获取在样本总表中，第 index 个样本，在样本原始数据中的，第 dimension 个维度的数据
     virtual Float SampleDimension(int64_t index, int dimension) const = 0;
 
   private:
     // GlobalSampler Private Data
+	// 记录当前维度
     int dimension;
+	// 记录当前样本，在样本表中的 index
     int64_t intervalSampleIndex;
+	// 为照相机设计的前5个维度
     static const int arrayStartDim = 5;
     int arrayEndDim;
 };

@@ -108,6 +108,8 @@ const Point2f *Sampler::Get2DArray(int n) {
 
 PixelSampler::PixelSampler(int64_t samplesPerPixel, int nSampledDimensions)
     : Sampler(samplesPerPixel) {
+	// 为了图方便，这里直接1D和2D都分配了维度数目的内存，这里可以优化 ##TODO
+	// 因为某个维度下，要么是 samples1D[D] 要么是 samples2D[D] 确实有内存上的浪费
     for (int i = 0; i < nSampledDimensions; ++i) {
         samples1D.push_back(std::vector<Float>(samplesPerPixel));
         samples2D.push_back(std::vector<Point2f>(samplesPerPixel));
@@ -125,11 +127,13 @@ bool PixelSampler::SetSampleNumber(int64_t sampleNum) {
 }
 
 Float PixelSampler::Get1D() {
+	// 整个逻辑跟 1DArray 类似，不过更简单，因为这里返回一个 采样数据 即可
     ProfilePhase _(Prof::GetSample);
     CHECK_LT(currentPixelSampleIndex, samplesPerPixel);
     if (current1DDimension < samples1D.size())
         return samples1D[current1DDimension++][currentPixelSampleIndex];
     else
+		// 这里应该是返回一个随机数的逻辑，RNG部分代码暂时没看懂 ????
         return rng.UniformFloat();
 }
 
@@ -146,11 +150,14 @@ void GlobalSampler::StartPixel(const Point2i &p) {
     ProfilePhase _(Prof::StartPixel);
     Sampler::StartPixel(p);
     dimension = 0;
+	// 确定第一个样本的位置
     intervalSampleIndex = GetIndexForSample(0);
     // Compute _arrayEndDim_ for dimensions used for array samples
+	// 照相机的维度 + 1维数据 + 2维数据 * 2
     arrayEndDim =
         arrayStartDim + sampleArray1D.size() + 2 * sampleArray2D.size();
 
+	// 下面是把对应样本表中的数据，拷贝到 sampleArray1D 中
     // Compute 1D array samples for _GlobalSampler_
     for (size_t i = 0; i < samples1DArraySizes.size(); ++i) {
         int nSamples = samples1DArraySizes[i] * samplesPerPixel;
@@ -160,6 +167,7 @@ void GlobalSampler::StartPixel(const Point2i &p) {
         }
     }
 
+	// 下面是把对应样本表中的数据，拷贝到 sampleArray2D 中
     // Compute 2D array samples for _GlobalSampler_
     int dim = arrayStartDim + samples1DArraySizes.size();
     for (size_t i = 0; i < samples2DArraySizes.size(); ++i) {
