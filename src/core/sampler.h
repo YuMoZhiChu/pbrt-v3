@@ -99,6 +99,7 @@ class Sampler {
 	// 维度是数组时，大小记录
     std::vector<int> samples1DArraySizes, samples2DArraySizes;
 	// 一维数据记录
+	// 第一个系数是维度 第二个数组是 集中处理 即前 n 个, 是一个样本的一个维度的数据
     std::vector<std::vector<Float>> sampleArray1D;
 	// 二维数据记录
     std::vector<std::vector<Point2f>> sampleArray2D;
@@ -121,6 +122,7 @@ class PixelSampler : public Sampler {
   protected:
     // PixelSampler Protected Data
 	// 用二次vector 来记录所有的 1D 和 2D 数据
+	  // 第一个系数是维度 第二个数组是 就是哪个样本，对应下标就是哪个
     std::vector<std::vector<Float>> samples1D;
     std::vector<std::vector<Point2f>> samples2D;
 	// 记录1D和2D 的当前偏移

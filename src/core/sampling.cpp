@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -39,10 +39,15 @@
 namespace pbrt {
 
 // Sampling Function Definitions
+// samp 随机生成起点
+// nSamples 生成样本个数
+// rng 随机数库
+// jitter 是否抖动标志
 void StratifiedSample1D(Float *samp, int nSamples, RNG &rng, bool jitter) {
     Float invNSamples = (Float)1 / nSamples;
     for (int i = 0; i < nSamples; ++i) {
         Float delta = jitter ? rng.UniformFloat() : 0.5f;
+		// invNSamples 的做法，归一化到 [0,1)，虽然这里是跟 i 有相关性的，但是后面有调用洗牌函数
         samp[i] = std::min((i + delta) * invNSamples, OneMinusEpsilon);
     }
 }
@@ -59,19 +64,33 @@ void StratifiedSample2D(Point2f *samp, int nx, int ny, RNG &rng, bool jitter) {
         }
 }
 
+// 拉丁超Cube算法
 void LatinHypercube(Float *samples, int nSamples, int nDim, RNG &rng) {
+	// 传入数据的格式是: 所以我们实现的是, 将这些数据拓展成 nSamples * nSamples 的正方形，每一个单元的维度是 nDim
+	//             0       1            2      3    ...   nSamples
+	// Dim 0       0     nDim+0      nDim*2+0
+	// Dim 1       1     nDim+1                       
+	// ...        
+	// Dim nDim  nDim-1 nDim+(nDim-1)
+
     // Generate LHS samples along diagonal
     Float invNSamples = (Float)1 / nSamples;
+	// 沿着对角线生成随机数
     for (int i = 0; i < nSamples; ++i)
         for (int j = 0; j < nDim; ++j) {
+			// 注意，这里用的是 i，也就是对应 0-nDim 维度，我们都是关于 i 生成的，所以是从 (0,0,..) -> (nSamples, nSamples, ..)
+			// 沿着这条对角线的轨迹，生成随机数，这是一个 nSamples * nSamples 的正方形
             Float sj = (i + (rng.UniformFloat())) * invNSamples;
             samples[nDim * i + j] = std::min(sj, OneMinusEpsilon);
         }
 
     // Permute LHS samples in each dimension
+	// 注意到，这里，i是维度，j是nSample
+	// 这里的交换，不同于 shuttle，它不会改变 一个单元的 维度相关系
     for (int i = 0; i < nDim; ++i) {
         for (int j = 0; j < nSamples; ++j) {
             int other = j + rng.UniformUInt32(nSamples - j);
+			// nDim * K+ i 都表示了，在 i 维度上的内容，所以， 单元中的维度 i，一定是和 另一个采样的 维度i 做交换的
             std::swap(samples[nDim * j + i], samples[nDim * other + i]);
         }
     }

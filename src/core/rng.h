@@ -69,6 +69,7 @@ class RNG {
     RNG(uint64_t sequenceIndex) { SetSequence(sequenceIndex); }
     void SetSequence(uint64_t sequenceIndex);
     uint32_t UniformUInt32();
+	// 带参数, 返回的是 r % b
     uint32_t UniformUInt32(uint32_t b) {
         uint32_t threshold = (~b + 1u) % b;
         while (true) {

@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -59,7 +59,9 @@ class StratifiedSampler : public PixelSampler {
 
   private:
     // StratifiedSampler Private Data
+	// 分割成 x * y 个块，在大多数地方，我们直接使用样本总数 xPixelSamples*yPixelSamples
     const int xPixelSamples, yPixelSamples;
+	// 是否做抖动
     const bool jitterSamples;
 };
 

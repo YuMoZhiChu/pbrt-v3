@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -147,6 +147,7 @@ class Distribution2D {
 };
 
 // Sampling Inline Functions
+// 随机洗牌函数
 template <typename T>
 void Shuffle(T *samp, int count, int nDimensions, RNG &rng) {
     for (int i = 0; i < count; ++i) {
