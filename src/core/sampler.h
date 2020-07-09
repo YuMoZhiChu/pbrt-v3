@@ -142,7 +142,7 @@ class GlobalSampler : public Sampler {
     Float Get1D();
     Point2f Get2D();
     GlobalSampler(int64_t samplesPerPixel) : Sampler(samplesPerPixel) {}
-	// 根据当前的采样的像素区域，获取第 sampleNum 个样本，在样本总表的位置
+	// 根据当前的采样的像素区域，获取第 sampleNum 个样本，在样本总表的位置，样本总表只是一个概念，它代表了一个一一映射的关系，但不一定真的要有一个数据结构
     virtual int64_t GetIndexForSample(int64_t sampleNum) const = 0;
 	// 获取在样本总表中，第 index 个样本，在样本原始数据中的，第 dimension 个维度的数据
     virtual Float SampleDimension(int64_t index, int dimension) const = 0;

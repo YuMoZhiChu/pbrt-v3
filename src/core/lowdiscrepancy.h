@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -65,20 +65,22 @@ inline double SobolSampleDouble(int64_t index, int dimension,
 
 // Low Discrepancy Inline Functions
 inline uint32_t ReverseBits32(uint32_t n) {
-    n = (n << 16) | (n >> 16);
+    n = (n << 16) | (n >> 16); // 因为 n 是32位的，所以 n << 16 是会自动拓展成 64 位，能够保留数据，64 位不能这么做的原因是，不能再往前拓展了
     n = ((n & 0x00ff00ff) << 8) | ((n & 0xff00ff00) >> 8);
     n = ((n & 0x0f0f0f0f) << 4) | ((n & 0xf0f0f0f0) >> 4);
-    n = ((n & 0x33333333) << 2) | ((n & 0xcccccccc) >> 2);
-    n = ((n & 0x55555555) << 1) | ((n & 0xaaaaaaaa) >> 1);
+    n = ((n & 0x33333333) << 2) | ((n & 0xcccccccc) >> 2); // 这里是把 abcd 改成了 cdab
+    n = ((n & 0x55555555) << 1) | ((n & 0xaaaaaaaa) >> 1); // 这里要把 cdab 改成 dcba，所以用的是 5(0101) 和 a(1010)
     return n;
 }
 
 inline uint64_t ReverseBits64(uint64_t n) {
-    uint64_t n0 = ReverseBits32((uint32_t)n);
-    uint64_t n1 = ReverseBits32((uint32_t)(n >> 32));
+    uint64_t n0 = ReverseBits32((uint32_t)n); // 截断, 取后面 32位
+    uint64_t n1 = ReverseBits32((uint32_t)(n >> 32)); // 取前面 32位
     return (n0 << 32) | n1;
 }
 
+// 整数 基于 base，的翻转接口
+// 这里都是整数运算，并且 1234 和 123400 都会转换成 4321，多于的 0 会被舍弃
 template <int base>
 inline uint64_t InverseRadicalInverse(uint64_t inverse, int nDigits) {
     uint64_t index = 0;

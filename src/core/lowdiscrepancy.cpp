@@ -37,6 +37,7 @@
 namespace pbrt {
 
 // Low Discrepancy Data Definitions
+// 质数序列
 const int Primes[PrimeTableSize] = {
     2, 3, 5, 7, 11,
     // Subsequent prime numbers
@@ -121,6 +122,7 @@ const int Primes[PrimeTableSize] = {
     7703, 7717, 7723, 7727, 7741, 7753, 7757, 7759, 7789, 7793, 7817, 7823,
     7829, 7841, 7853, 7867, 7873, 7877, 7879, 7883, 7901, 7907, 7919};
 
+// 记录前面的质数和
 const int PrimeSums[PrimeTableSize] = {
     0, 2, 5, 10, 17,
     // Subsequent prime sums
@@ -386,6 +388,11 @@ uint32_t CMaxMinDist[17][32] = {
 };
 
 // Low Discrepancy Static Functions
+// 输入 a，获取在 base 下的，radical inverse
+// 这里为什么用 模板函数，而不把 base 作为一个参数传入
+//     因为在CPU上，整数除法的效率异常的慢，如果我们使用模板函数，那么 CPU 会有一些 Magic 的做法来实现除法
+//	   比如，一个 32bit 的整数除以 3，可以这么做： 先乘上 2863311531，获得一个 64bit的数，然后右移 33位即可
+//     这些 magic 方法参考 https://doc.lagout.org/security/Hackers%20Delight.pdf
 template <int base>
 PBRT_NOINLINE static Float RadicalInverseSpecialized(uint64_t a) {
     const Float invBase = (Float)1 / (Float)base;
@@ -394,10 +401,12 @@ PBRT_NOINLINE static Float RadicalInverseSpecialized(uint64_t a) {
     while (a) {
         uint64_t next = a / base;
         uint64_t digit = a - next * base;
-        reversedDigits = reversedDigits * base + digit;
+        reversedDigits = reversedDigits * base + digit; // 这里是整数计算，不会有误差
+		// CPU 上的整数 和 浮点数的运行单元是彼此独立的，在循环中，整数就整数，浮点数就和浮点数运算，对寄存器友好
         invBaseN *= invBase;
         a = next;
     }
+	// 最后再计算 整数和浮点数的复合运算
     DCHECK_LT(reversedDigits * invBaseN, 1.00001);
     return std::min(reversedDigits * invBaseN, OneMinusEpsilon);
 }
@@ -416,6 +425,13 @@ ScrambledRadicalInverseSpecialized(const uint16_t *perm, uint64_t a) {
         invBaseN *= invBase;
         a = next;
     }
+	// 这里要多补上一个常数项，原因如下：
+	// 当 1234 做 base 是 10 的基底的 RI 时，可以得到 4321
+	// 但是，如果是做 Permutation，那么我们得到的数据，要做 Permut
+	// 但是，0 也是有映射的，也就是说，4321 -映射为-> 7890 不够全，应该是 4321000(0循环) -映射为-> 7890111(1循环) 其中 1 是 0 的映射
+	// 所以要补上这个值，invBaseN 是小数点移位，invBase / (1 - invBase) 这个把 base 为 10 带入
+	// 可以得到 1/9 也就是 0.1111111 乘上 perm[0] 的循环
+	// invBase / (1 - invBase) 表示在 Base 下的数字单体循环小数
     DCHECK_LT(invBaseN * (reversedDigits + invBase * perm[0] / (1 - invBase)),
               1.00001);
     return std::min(
@@ -424,10 +440,13 @@ ScrambledRadicalInverseSpecialized(const uint16_t *perm, uint64_t a) {
 }
 
 // Low Discrepancy Function Definitions
+// baseIndex ：质数基数
+// a ：要求的 a，X(a) = ( φ_n(a), ... )
 Float RadicalInverse(int baseIndex, uint64_t a) {
     switch (baseIndex) {
     case 0:
     // Compute base-2 radical inverse
+	// 在以2位基的情况下，因为计算机是 2进制表示，所以直接做位运算获得 base-2 radical inverse，再除以 2^64 即可
 #ifndef PBRT_HAVE_HEX_FP_CONSTANTS
         return ReverseBits64(a) * 5.4210108624275222e-20;
 #else
@@ -2487,22 +2506,32 @@ Float RadicalInverse(int baseIndex, uint64_t a) {
     }
 }
 
+// 这个函数只会计算一次
+// 目的是给不同的 base 他们的 halton 的小数点后的 radical inverse 重新排序，防止 base 过大时，趋向于集中而不是均匀分布
+// 这里采取随机分布，可以用更好的 Permutation 算法优化 ????TODO 更好的乱序方法学习
+// 得到的 perms，包含了对应所有质数的乱序
 std::vector<uint16_t> ComputeRadicalInversePermutations(RNG &rng) {
     std::vector<uint16_t> perms;
     // Allocate space in _perms_ for radical inverse permutations
     int permArraySize = 0;
+	// 每个质数，对应他们本身数量的乱序列，为什么是本身数量，因为我们的质数是基底，比如一个3基底的数 102(3) 他对应的乱序是 210 那么它应该是 120(3)
+	// perms 前 2 个，base 是 2 的时候的乱序 Permutation
+	//       后 3 个，base 是 3 的时候的乱序 Permutation
+	//       后 5 个，base 是 5 的时候的乱序 Permutation ....以此类推，这个数组会非常大
     for (int i = 0; i < PrimeTableSize; ++i) permArraySize += Primes[i];
     perms.resize(permArraySize);
     uint16_t *p = &perms[0];
     for (int i = 0; i < PrimeTableSize; ++i) {
         // Generate random permutation for $i$th prime base
         for (int j = 0; j < Primes[i]; ++j) p[j] = j;
+		// 随机洗牌一次
         Shuffle(p, Primes[i], 1, rng);
         p += Primes[i];
     }
     return perms;
 }
 
+// 带打乱顺序的 Radical Inverse 计算
 Float ScrambledRadicalInverse(int baseIndex, uint64_t a, const uint16_t *perm) {
     switch (baseIndex) {
     case 0:

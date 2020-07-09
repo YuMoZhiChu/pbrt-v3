@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -60,6 +60,7 @@ class HaltonSampler : public GlobalSampler {
     Point2i baseScales, baseExponents;
     int sampleStride;
     int multInverse[2];
+	// 记录当前进行采样的像素位置
     mutable Point2i pixelForOffset = Point2i(std::numeric_limits<int>::max(),
                                              std::numeric_limits<int>::max());
     mutable int64_t offsetForCurrentPixel;
@@ -68,6 +69,7 @@ class HaltonSampler : public GlobalSampler {
     bool sampleAtPixelCenter;
 
     // HaltonSampler Private Methods
+	// 返回对应的 Permutation 数组
     const uint16_t *PermutationForDimension(int dim) const {
         if (dim >= PrimeTableSize)
             LOG(FATAL) << StringPrintf("HaltonSampler can only sample %d "
