@@ -377,6 +377,11 @@ inline PBRT_CONSTEXPR bool IsPowerOf2(T v) {
     return v && !(v & (v - 1));
 }
 
+// 获得一个最小的一个大于 v 的一个 2 的整次幂
+// 比如
+// 3 -> 4
+// 444 -> 512
+// 777 -> 1024
 inline int32_t RoundUpPow2(int32_t v) {
     v--;
     v |= v >> 1;
