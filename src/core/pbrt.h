@@ -403,6 +403,7 @@ inline int64_t RoundUpPow2(int64_t v) {
     return v + 1;
 }
 
+// 计算 v 的末尾有几个零
 inline int CountTrailingZeros(uint32_t v) {
 #if defined(PBRT_IS_MSVC)
     unsigned long index;

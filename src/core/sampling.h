@@ -148,6 +148,9 @@ class Distribution2D {
 
 // Sampling Inline Functions
 // 随机洗牌函数
+// samp 洗牌内容的数据起点
+// count 洗牌内容的范围
+// nDimensions 洗牌内容的维度，因为我们的样本，比如 数组样本数据，是需要整个移动的，所以这里是维度数据
 template <typename T>
 void Shuffle(T *samp, int count, int nDimensions, RNG &rng) {
     for (int i = 0; i < count; ++i) {

@@ -52,6 +52,7 @@ ZeroTwoSequenceSampler::ZeroTwoSequenceSampler(int64_t samplesPerPixel,
 
 void ZeroTwoSequenceSampler::StartPixel(const Point2i &p) {
     ProfilePhase _(Prof::StartPixel);
+	// 这里针对 1D 使用 VanDerCorput， 2D 使用 02 序列
     // Generate 1D and 2D pixel sample components using $(0,2)$-sequence
     for (size_t i = 0; i < samples1D.size(); ++i)
         VanDerCorput(1, samplesPerPixel, &samples1D[i][0], rng);

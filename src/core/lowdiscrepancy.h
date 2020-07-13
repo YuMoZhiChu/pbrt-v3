@@ -92,6 +92,8 @@ inline uint64_t InverseRadicalInverse(uint64_t inverse, int nDigits) {
     return index;
 }
 
+// 02序列的算法函数
+// C矩阵的列向量，在参数 a 的每一位是否位 1 的情况下，判断是否做 相加再模2(这个操作，等同于 或)
 inline uint32_t MultiplyGenerator(const uint32_t *C, uint32_t a) {
     uint32_t v = 0;
     for (int i = 0; a != 0; ++i, a >>= 1)
@@ -99,6 +101,8 @@ inline uint32_t MultiplyGenerator(const uint32_t *C, uint32_t a) {
     return v;
 }
 
+// 02序列用到的算法函数
+// 用 异或 一个特质的数 scramble 来表示是否做 对称交换
 inline Float SampleGeneratorMatrix(const uint32_t *C, uint32_t a,
                                    uint32_t scramble = 0) {
 #ifndef PBRT_HAVE_HEX_FP_CONSTANTS
@@ -110,19 +114,32 @@ inline Float SampleGeneratorMatrix(const uint32_t *C, uint32_t a,
 #endif
 }
 
+// 一个数，获得它对应的 格雷码
+// 这个坑爹的函数，全局引用就这里有个定义，就是拿给你看的
 inline uint32_t GrayCode(uint32_t v) { return (v >> 1) ^ v; }
 
+// 非常关键的一点，这个算法，不是 02序列，就是简单的 2进制 Radical Inverse,也叫做 VanDerCorput
+// 在这里， 同样有 C 矩阵的概念，不过是被大大优化了的，优化的方式主要是 异或计算 和 格雷码 这两点
+// C: 2进制 逆转矩阵
+// n: 传入的计算数量，这里的 n 是被补齐到 2^i 次方的
+// scramble: 随机数
+// p: 存放结果的地方
 inline void GrayCodeSample(const uint32_t *C, uint32_t n, uint32_t scramble,
                            Float *p) {
-    uint32_t v = scramble;
+    uint32_t v = scramble; // 这是一个随机数，随机初值
     for (uint32_t i = 0; i < n; ++i) {
 #ifndef PBRT_HAVE_HEX_FP_CONSTANTS
         p[i] = std::min(v * Float(2.3283064365386963e-10) /* 1/2^32 */,
                         OneMinusEpsilon);
 #else
+		// 第一个数，就直接存随机数
         p[i] = std::min(v * Float(0x1p-32) /* 1/2^32 */,
                         OneMinusEpsilon);
 #endif
+		// 算尾巴有几个 0 ，从 1 开始，到 n 本身(也就是 2^xxx）不从 0 开始的原因是，0 的 CountTrailingZeros 是搞不了的
+		// 1. 因为用的是格雷码的理念，所以当前这个数v(这里把它当做格雷码来用)，只在 CountTrailingZeros(i + 1) 位上，和前一个数不同
+		// 2. 因为我们用的是 2进制的 Radical Inverse 也就是 VanDerCorput，所以，要用 C 矩阵做一个映射，映射到对应相对称的位置
+		// 3. 因为不一样，所以做一次 异或
         v ^= C[CountTrailingZeros(i + 1)];
     }
 }
@@ -150,6 +167,7 @@ inline void VanDerCorput(int nSamplesPerPixelSample, int nPixelSamples,
     const uint32_t CVanDerCorput[32] = {
 #ifdef PBRT_HAVE_BINARY_CONSTANTS
       // clang-format off
+	  // 这里是一个逆转 0 对应 最高位的 1,1 对应 次高位的 1，以此类推
       0b10000000000000000000000000000000,
       0b1000000000000000000000000000000,
       0b100000000000000000000000000000,
@@ -196,9 +214,12 @@ inline void VanDerCorput(int nSamplesPerPixelSample, int nPixelSamples,
     int totalSamples = nSamplesPerPixelSample * nPixelSamples;
     GrayCodeSample(CVanDerCorput, totalSamples, scramble, samples);
     // Randomly shuffle 1D sample points
+	// 第一次洗牌，是针对 SPP，每一个样本的采样数据结构，不是数组就是 1，是数组就是 数组内乱序
     for (int i = 0; i < nPixelSamples; ++i)
         Shuffle(samples + i * nSamplesPerPixelSample, nSamplesPerPixelSample, 1,
                 rng);
+	// 第二次洗牌，是针对 当前 Pixel 的所有样本，是数组就是 1，在 nPixelSamples 下乱序
+	// 是数组就保存 nSamplesPerPixelSample 也就是数组的长度的记录
     Shuffle(samples, nPixelSamples, nSamplesPerPixelSample, rng);
 }
 
@@ -209,6 +230,7 @@ inline void Sobol2D(int nSamplesPerPixelSample, int nPixelSamples,
     scramble[1] = rng.UniformUInt32();
 
     // Define 2D Sobol$'$ generator matrices _CSobol[2]_
+	// 2D 的使用这里给出的矩阵 (为什么是这个矩阵，不清楚 TODO????
     const uint32_t CSobol[2][32] = {
         {0x80000000, 0x40000000, 0x20000000, 0x10000000, 0x8000000, 0x4000000,
          0x2000000, 0x1000000, 0x800000, 0x400000, 0x200000, 0x100000, 0x80000,
