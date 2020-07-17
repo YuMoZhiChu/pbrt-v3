@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -42,6 +42,8 @@ namespace pbrt {
 void MaxMinDistSampler::StartPixel(const Point2i &p) {
     ProfilePhase _(Prof::StartPixel);
     Float invSPP = (Float)1 / samplesPerPixel;
+	// 说是 MaxMin 的用法，但实际上只有 2D 维度用到了这个算法，也就是，随机采样的第一个2D维度 x,y
+	// 这个维度中 x 是用等分来算，y 则是使用 CPiexl 矩阵来计算，整个流程参照 02序列
     for (int i = 0; i < samplesPerPixel; ++i)
         samples2D[0][i] = Point2f(i * invSPP, SampleGeneratorMatrix(CPixel, i));
     Shuffle(&samples2D[0][0], samplesPerPixel, 1, rng);
@@ -49,6 +51,7 @@ void MaxMinDistSampler::StartPixel(const Point2i &p) {
     for (size_t i = 0; i < samples1D.size(); ++i)
         VanDerCorput(1, samplesPerPixel, &samples1D[i][0], rng);
 
+	// 其他的内容用的是 Sobol 2D
     for (size_t i = 1; i < samples2D.size(); ++i)
         Sobol2D(1, samplesPerPixel, &samples2D[i][0], rng);
 

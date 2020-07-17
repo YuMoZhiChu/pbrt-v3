@@ -247,7 +247,7 @@ const int PrimeSums[PrimeTableSize] = {
 //   copy columns of bits.
 // - Reverse the bits in each column (so we don't need to reverse the
 //   result after the matrix multiply.)
-
+// 总共有 17 个矩阵，每个矩阵分别对应采样点的幂次 log2int(SPP)
 uint32_t CMaxMinDist[17][32] = {
     {
         0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,

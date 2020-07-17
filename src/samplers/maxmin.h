@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -45,6 +45,7 @@
 namespace pbrt {
 
 // MaxMinDistSampler Declarations
+// 这个是一个继承于 点采样 的采样方法
 class MaxMinDistSampler : public PixelSampler {
   public:
     // MaxMinDistSampler Public Methods
@@ -52,6 +53,7 @@ class MaxMinDistSampler : public PixelSampler {
     std::unique_ptr<Sampler> Clone(int seed);
     int RoundCount(int count) const { return RoundUpPow2(count); }
     MaxMinDistSampler(int64_t samplesPerPixel, int nSampledDimensions)
+		// 超级省的写法，直接写一个 lambad 然后就是调用 [](){}(调用)
         : PixelSampler([](int64_t spp) {
               int Cindex = Log2Int(spp);
               if (Cindex >= sizeof(CMaxMinDist) / sizeof(CMaxMinDist[0])) {
