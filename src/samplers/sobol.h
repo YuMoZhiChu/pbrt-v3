@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -44,6 +44,9 @@
 namespace pbrt {
 
 // SobolSampler Declarations
+// Sobol 采样器
+// 优点： 低差异分布
+// 缺点： 容易出现结构化的网格伪像
 class SobolSampler : public GlobalSampler {
   public:
     // SobolSampler Public Methods
@@ -55,6 +58,7 @@ class SobolSampler : public GlobalSampler {
             Warning("Non power-of-two sample count rounded up to %" PRId64
                     " for SobolSampler.",
                     this->samplesPerPixel);
+		// 采样的范围，选择是最小能包含 Sample大小 的一个 整数2次幂 的正方形
         resolution = RoundUpPow2(
             std::max(sampleBounds.Diagonal().x, sampleBounds.Diagonal().y));
         log2Resolution = Log2Int(resolution);

@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -26697,6 +26697,7 @@ const uint64_t SobolMatrices64[NumSobolDimensions * SobolMatrixSize] = {
     0x0001397876ec5561,
 };
 
+// 第一个维度，针对多大的 幂次，设置的矩阵
 const uint64_t VdCSobolMatrices[][SobolMatrixSize] = {
     {// m = 1
      0x1ULL, 0x1ULL, 0x1ULL, 0x1ULL, 0x1ULL, 0x1ULL, 0x1ULL, 0x1ULL, 0x1ULL,
@@ -26823,6 +26824,7 @@ const uint64_t VdCSobolMatrices[][SobolMatrixSize] = {
     {// m = 25
      0x1400140ULL, 0x1e001e0ULL}};
 
+// 第一个维度，针对多大的幂次，设置的矩阵
 const uint64_t VdCSobolMatricesInv[][SobolMatrixSize] = {
     {// m = 1
      0x2ULL, 0x3ULL},

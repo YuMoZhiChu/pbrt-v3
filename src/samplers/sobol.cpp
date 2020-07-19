@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -39,6 +39,7 @@
 namespace pbrt {
 
 // SobolSampler Method Definitions
+// 获得第 sampleNum 个样本的 Index
 int64_t SobolSampler::GetIndexForSample(int64_t sampleNum) const {
     return SobolIntervalToIndex(log2Resolution, sampleNum,
                                 Point2i(currentPixel - sampleBounds.pMin));
@@ -51,6 +52,7 @@ Float SobolSampler::SampleDimension(int64_t index, int dim) const {
                                    NumSobolDimensions);
     Float s = SobolSample(index, dim);
     // Remap Sobol$'$ dimensions used for pixel samples
+	// xy 的取值范围，SobolSample 得到的是一个 [0,1) 的取值范围，置换为对应相对 CurrentPixel 的偏移
     if (dim == 0 || dim == 1) {
         s = s * resolution + sampleBounds.pMin[dim];
         s = Clamp(s - currentPixel[dim], (Float)0, OneMinusEpsilon);

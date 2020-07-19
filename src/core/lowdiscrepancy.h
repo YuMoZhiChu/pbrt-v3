@@ -250,21 +250,33 @@ inline void Sobol2D(int nSamplesPerPixelSample, int nPixelSamples,
     Shuffle(samples, nPixelSamples, nSamplesPerPixelSample, rng);
 }
 
+// sobol 的 获得第几个 sample 的 index
+// m：幂次，包含了整个采样范围的，2次幂的 幂次（像素范围
+// frame：第几个 sample
+// p：相对于采样范围起点，我们的位移
+// 对于 Sobol 采样，他就是把一个 [0,1) 的范围，放大到了 2^log2Resoultion 这样一个范围，去包含我们的采样范围
+// TODO 整个逻辑没看明白
 inline uint64_t SobolIntervalToIndex(const uint32_t m, uint64_t frame,
                                      const Point2i &p) {
     if (m == 0) return 0;
 
     const uint32_t m2 = m << 1;
     uint64_t index = uint64_t(frame) << m2;
+	// 这里拿到的 index，在后 2*m 的位置上，都是 000000，这一点，保证了在 [2^m, 2^m] 这个映射范围内，前 2^(2*m) 个，是恰好映射的
+	// 多余的 index 信息呢，记录在 64-2*m 的位置里
 
+	// 输入是 frame，也就是 第几个样本
+	// 使用的矩阵是 VdCSobolMatrices 这个矩阵，只会对 m 位做施加影响, 不会对高次位 有影响
     uint64_t delta = 0;
     for (int c = 0; frame; frame >>= 1, ++c)
         if (frame & 1)  // Add flipped column m + c + 1.
             delta ^= VdCSobolMatrices[m - 1][c];
 
     // flipped b
+	// (((uint64_t)((uint32_t)p.x) << m) | ((uint32_t)p.y)) 这里，前 32 位是 x 的信息，后 32 位是 y 的信息
     uint64_t b = (((uint64_t)((uint32_t)p.x) << m) | ((uint32_t)p.y)) ^ delta;
 
+	// 对 b 做 2 的根逆
     for (int c = 0; b; b >>= 1, ++c)
         if (b & 1)  // Add column 2 * m - c.
             index ^= VdCSobolMatricesInv[m - 1][c];
@@ -285,6 +297,7 @@ inline float SobolSampleFloat(int64_t a, int dimension, uint32_t scramble) {
         "Integrator has consumed too many Sobol' dimensions; you "
         "may want to use a Sampler without a dimension limit like "
         "\"02sequence.\"";
+	// 这个就是一个 2进制版的 对运算做过简化的 一个求随机采样点的算法
     uint32_t v = scramble;
     for (int i = dimension * SobolMatrixSize; a != 0; a >>= 1, i++)
         if (a & 1) v ^= SobolMatrices32[i];
