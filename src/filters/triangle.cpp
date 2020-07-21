@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -38,6 +38,7 @@
 namespace pbrt {
 
 // Triangle Filter Method Definitions
+// 三角滤波，中心的权重是最高的，越往旁边，权重越低
 Float TriangleFilter::Evaluate(const Point2f &p) const {
     return std::max((Float)0, radius.x - std::abs(p.x)) *
            std::max((Float)0, radius.y - std::abs(p.y));

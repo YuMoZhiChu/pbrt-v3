@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -38,6 +38,7 @@
 namespace pbrt {
 
 // Box Filter Method Definitions
+// Box 的频率就是 1，他就是取平均数
 Float BoxFilter::Evaluate(const Point2f &p) const { return 1.; }
 
 BoxFilter *CreateBoxFilter(const ParamSet &ps) {

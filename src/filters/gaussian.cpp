@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -38,6 +38,7 @@
 namespace pbrt {
 
 // Gaussian Filter Method Definitions
+// 2 阶的高斯函数 等于 1阶的高斯函数的乘积
 Float GaussianFilter::Evaluate(const Point2f &p) const {
     return Gaussian(p.x, expX) * Gaussian(p.y, expY);
 }

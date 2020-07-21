@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -57,9 +57,11 @@ class GaussianFilter : public Filter {
   private:
     // GaussianFilter Private Data
     const Float alpha;
+	// 提前计算第一项，提高效率
     const Float expX, expY;
 
     // GaussianFilter Utility Functions
+	// 计算高斯函数
     Float Gaussian(Float d, Float expv) const {
         return std::max((Float)0, Float(std::exp(-alpha * d * d) - expv));
     }

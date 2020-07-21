@@ -51,9 +51,14 @@ class Filter {
     virtual ~Filter();
     Filter(const Vector2f &radius)
         : radius(radius), invRadius(Vector2f(1 / radius.x, 1 / radius.y)) {}
+	// 滤波器需要实现的唯一接口
+	// 传入一个点，这是采样点相对于滤波器中心的位置
+	// 返回滤波的值
+	// 传入的值，永远保证在滤波的半径范围内，所以无需检查
     virtual Float Evaluate(const Point2f &p) const = 0;
 
     // Filter Public Data
+	// 滤波的半径，在xy两个方向上有范围，超过了就是 0，预先存储倒数做计算上的优化
     const Vector2f radius, invRadius;
 };
 
