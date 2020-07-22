@@ -61,7 +61,7 @@ class GaussianFilter : public Filter {
     const Float expX, expY;
 
     // GaussianFilter Utility Functions
-	// 计算高斯函数
+	// 计算高斯函数，算固定插值为了保证，平缓的下降到0
     Float Gaussian(Float d, Float expv) const {
         return std::max((Float)0, Float(std::exp(-alpha * d * d) - expv));
     }

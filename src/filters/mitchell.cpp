@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -38,6 +38,7 @@
 namespace pbrt {
 
 // Mitchell Filter Method Definitions
+// Mitchell 也是 2D 等于 1D 的乘积，是可分离的滤波器
 Float MitchellFilter::Evaluate(const Point2f &p) const {
     return Mitchell1D(p.x * invRadius.x) * Mitchell1D(p.y * invRadius.y);
 }

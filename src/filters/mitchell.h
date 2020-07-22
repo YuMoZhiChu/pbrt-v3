@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -50,6 +50,7 @@ class MitchellFilter : public Filter {
     MitchellFilter(const Vector2f &radius, Float B, Float C)
         : Filter(radius), B(B), C(C) {}
     Float Evaluate(const Point2f &p) const;
+	// 可以把这个函数理解成一个 三次拟合的函数，其内容在 012 点上能保持连续
     Float Mitchell1D(Float x) const {
         x = std::abs(2 * x);
         if (x > 1)
@@ -63,6 +64,7 @@ class MitchellFilter : public Filter {
     }
 
   private:
+	// Mitchell 滤波器的参数，这里满足 B+2C=1
     const Float B, C;
 };
 

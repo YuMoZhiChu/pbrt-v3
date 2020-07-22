@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -38,6 +38,7 @@
 namespace pbrt {
 
 // Sinc Filter Method Definitions
+// 这个也是可拆分的函数
 Float LanczosSincFilter::Evaluate(const Point2f &p) const {
     return WindowedSinc(p.x, radius.x) * WindowedSinc(p.y, radius.y);
 }
