@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -58,6 +58,13 @@ struct FilmTilePixel {
 class Film {
   public:
     // Film Public Methods
+	// 构造函数传入的参数:
+	// resolution：图像的整体分辨率
+	// cropWindow：裁剪窗口，用于指定要渲染的图像子集
+	// filter：滤波器指针
+	// diagonal：Film 对应的物理区域的 对角线长度，传入的参数是毫米，但是在构造时会转换成米
+	// filename：输出图片文件名
+	// scale，maxSampleLuminance：图像的 Pixel Value 怎么在 files 中保存
     Film(const Point2i &resolution, const Bounds2f &cropWindow,
          std::unique_ptr<Filter> filter, Float diagonal,
          const std::string &filename, Float scale,
@@ -76,19 +83,27 @@ class Film {
     const Float diagonal;
     std::unique_ptr<Filter> filter;
     const std::string filename;
+	// 裁剪的像素范围
     Bounds2i croppedPixelBounds;
 
   private:
     // Film Private Data
+
+	// 我们为在分辨率上的图像的每一个像素，分配了一个 Pixel 的结构
     struct Pixel {
         Pixel() { xyz[0] = xyz[1] = xyz[2] = filterWeightSum = 0; }
+		// Spectrum 转换成的 XYZ 表示
         Float xyz[3];
+		// 滤波器的权重值的和
         Float filterWeightSum;
+		// splats 样本值
         AtomicFloat splatXYZ[3];
+		// pad 不使用，为了结构上的优化，4 byte，凑够 32 bytes
         Float pad;
     };
     std::unique_ptr<Pixel[]> pixels;
     static PBRT_CONSTEXPR int filterTableWidth = 16;
+	// 预计算的滤波器权重表
     Float filterTable[filterTableWidth * filterTableWidth];
     std::mutex mutex;
     const Float scale;

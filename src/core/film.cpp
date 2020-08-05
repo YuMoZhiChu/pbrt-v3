@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -52,6 +52,8 @@ Film::Film(const Point2i &resolution, const Bounds2f &cropWindow,
       scale(scale),
       maxSampleLuminance(maxSampleLuminance) {
     // Compute film image bounds
+	// 初始化裁剪窗口大小，NDC空间->具体的像素位置
+	// 使用 ceil 函数，保证如果有多个渲染流程，每一个像素出现在子图像中，只会出现一次（约定都使用 ceil
     croppedPixelBounds =
         Bounds2i(Point2i(std::ceil(fullResolution.x * cropWindow.pMin.x),
                          std::ceil(fullResolution.y * cropWindow.pMin.y)),
@@ -62,14 +64,18 @@ Film::Film(const Point2i &resolution, const Bounds2f &cropWindow,
         croppedPixelBounds;
 
     // Allocate film image storage
+	// 为每一个像素，分配动态内存
     pixels = std::unique_ptr<Pixel[]>(new Pixel[croppedPixelBounds.Area()]);
     filmPixelMemory += croppedPixelBounds.Area() * sizeof(Pixel);
 
     // Precompute filter weight table
+	// 预计算滤波器的表，不用每一次都调用 filter->Evaluate 来计算
+	// 可能会导致 filter->Evaluate 传入的位置不够精确，但这个错误可以忽略
     int offset = 0;
     for (int y = 0; y < filterTableWidth; ++y) {
         for (int x = 0; x < filterTableWidth; ++x, ++offset) {
             Point2f p;
+			// 从中心点开始，扩展，并进行预计算
             p.x = (x + 0.5f) * filter->radius.x / filterTableWidth;
             p.y = (y + 0.5f) * filter->radius.y / filterTableWidth;
             filterTable[offset] = filter->Evaluate(p);
@@ -77,7 +83,11 @@ Film::Film(const Point2i &resolution, const Bounds2f &cropWindow,
     }
 }
 
+// 这个函数负责返回给出 采样器的范围，因为我们的实际范围，要拓展到滤波器的过滤范围
+// 我们在采样的时候，经常跨越多个像素，所以采样范围，是大于实际的输出范围的
+// 所以图像不仅仅收到内部的值的影响，也会收到外部的影响
 Bounds2i Film::GetSampleBounds() const {
+	// 考虑到离散像素坐标 转换为 连续像素坐标时，需要做 半像素偏移，再拓展滤波器半径，向外舍入
     Bounds2f floatBounds(Floor(Point2f(croppedPixelBounds.pMin) +
                                Vector2f(0.5f, 0.5f) - filter->radius),
                          Ceil(Point2f(croppedPixelBounds.pMax) -
@@ -85,6 +95,10 @@ Bounds2i Film::GetSampleBounds() const {
     return (Bounds2i)floatBounds;
 }
 
+// 这个函数，返回在 film 在场景中的实际范围，可以理解为这一块 幕布 在实际场景中的大小
+// RealisticCamera 会需要这个参数
+// 给定的 a 是长宽比
+// 给定的 diagonal 是斜边长
 Bounds2f Film::GetPhysicalExtent() const {
     Float aspect = (Float)fullResolution.y / (Float)fullResolution.x;
     Float x = std::sqrt(diagonal * diagonal / (1 + aspect * aspect));
