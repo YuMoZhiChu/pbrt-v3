@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -150,9 +150,16 @@ struct FourierBSDFTable {
                              Float weights[4]) const;
 };
 
+// BSDF 类，他的特点
+// 1. 整合了 BRDF 和 BTDF
+// 2. 对上层接口，隐藏了细节法线，比如 阴影法线，来自模型或贴图的法线
 class BSDF {
   public:
     // BSDF Public Methods
+	// BSDF 的构造，需要参数
+	// si ： 表面的微分信息
+	// eta : 表面的相对折射率，对于不透明的表面，不使用 eta，默认值是 1
+	// 
     BSDF(const SurfaceInteraction &si, Float eta = 1)
         : eta(eta),
           ns(si.shading.n),
