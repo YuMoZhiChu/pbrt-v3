@@ -53,28 +53,36 @@ Spectrum FrConductor(Float cosThetaI, const Spectrum &etaI,
                      const Spectrum &etaT, const Spectrum &k);
 
 // BSDF Inline Functions
+// inline 函数，计算传入 w 和 BRDF 坐标系的快速计算，这里返回的是对应 球坐标系的 (theta,phi) 对应的值
+// 快速计算 cos
 inline Float CosTheta(const Vector3f &w) { return w.z; }
+// 快速计算 cos 的 平方
 inline Float Cos2Theta(const Vector3f &w) { return w.z * w.z; }
+// 快速计算 cos 的 绝对值
 inline Float AbsCosTheta(const Vector3f &w) { return std::abs(w.z); }
+// 快速计算 sin 的 平方
 inline Float Sin2Theta(const Vector3f &w) {
     return std::max((Float)0, (Float)1 - Cos2Theta(w));
 }
-
+// 快速计算 sin
 inline Float SinTheta(const Vector3f &w) { return std::sqrt(Sin2Theta(w)); }
-
+// 快速计算 tan
 inline Float TanTheta(const Vector3f &w) { return SinTheta(w) / CosTheta(w); }
-
+// 快速计算 tan 的 平方
 inline Float Tan2Theta(const Vector3f &w) {
     return Sin2Theta(w) / Cos2Theta(w);
 }
 
+// 快速计算 cos phi
 inline Float CosPhi(const Vector3f &w) {
     Float sinTheta = SinTheta(w);
+	// 考量到 /0 的情况，那么我们默认为 0 时，sin 是 0
     return (sinTheta == 0) ? 1 : Clamp(w.x / sinTheta, -1, 1);
 }
 
 inline Float SinPhi(const Vector3f &w) {
     Float sinTheta = SinTheta(w);
+    // 考量到 /0 的情况，那么我们默认为 0 时，cos 是 1
     return (sinTheta == 0) ? 0 : Clamp(w.y / sinTheta, -1, 1);
 }
 
@@ -82,6 +90,9 @@ inline Float Cos2Phi(const Vector3f &w) { return CosPhi(w) * CosPhi(w); }
 
 inline Float Sin2Phi(const Vector3f &w) { return SinPhi(w) * SinPhi(w); }
 
+// 传入两条射线，快速计算他们的 cos delta phi
+// 这里只计算 平面角的差值 的 cos，所以和 z 没关系
+// 这个公式可推
 inline Float CosDPhi(const Vector3f &wa, const Vector3f &wb) {
     return Clamp(
         (wa.x * wb.x + wa.y * wb.y) / std::sqrt((wa.x * wa.x + wa.y * wa.y) *
@@ -214,6 +225,7 @@ inline std::ostream &operator<<(std::ostream &os, const BSDF &bsdf) {
 }
 
 // BxDF Declarations
+// BRDF 和 BTDF 共有的基类
 class BxDF {
   public:
     // BxDF Interface
