@@ -128,11 +128,16 @@ inline bool SameHemisphere(const Vector3f &w, const Normal3f &wp) {
 
 // BSDF Declarations
 enum BxDFType {
+	// 反射
     BSDF_REFLECTION = 1 << 0,
-    BSDF_TRANSMISSION = 1 << 1,
-    BSDF_DIFFUSE = 1 << 2,
-    BSDF_GLOSSY = 1 << 3,
-    BSDF_SPECULAR = 1 << 4,
+    // 透射
+	BSDF_TRANSMISSION = 1 << 1,
+    // 漫反射
+	BSDF_DIFFUSE = 1 << 2,
+    // 高光，其中 逆向反射，也视为 高光反色
+	BSDF_GLOSSY = 1 << 3,
+    // 镜面反射
+	BSDF_SPECULAR = 1 << 4,
     BSDF_ALL = BSDF_DIFFUSE | BSDF_GLOSSY | BSDF_SPECULAR | BSDF_REFLECTION |
                BSDF_TRANSMISSION,
 };
@@ -225,25 +230,51 @@ inline std::ostream &operator<<(std::ostream &os, const BSDF &bsdf) {
 }
 
 // BxDF Declarations
-// BRDF 和 BTDF 共有的基类
+// BRDF 和 BTDF 共有的接口
 class BxDF {
   public:
     // BxDF Interface
     virtual ~BxDF() {}
+	// 初始化时，必须初始化它的类型
     BxDF(BxDFType type) : type(type) {}
+	// 类型匹配，也是满足 xxx 类型
     bool MatchesFlags(BxDFType t) const { return (type & t) == type; }
+	// 核心函数， ????
+	// 返回对应的 入射出射 方向的光谱表达式
+	// 不同波长的光是解耦的，一个波长的能量将不会在另一个波长处反射
+	// 反射的效果，可以直接用 光谱 来表示
+	// 个人理解，给定一个 入射方向，出射方向，不同的材质会有不同的光谱分布，所以我们返回一个光谱来表示这种分布
+	// 这里的光谱分布，应该是指， 出射光 的 分布
+	// 对于支持 荧光材料 的材质，该方法会要求返回一个 举证，表示 光谱之间能量转移之间的 编码
     virtual Spectrum f(const Vector3f &wo, const Vector3f &wi) const = 0;
+
+	// 并不是所有的 BxDF 都可以用这种方法，来得到 光谱 分布
+	// 比如完美镜面反射，比如 镜子，玻璃，光就只能从 单个入射反向 反射到 单个出射方向
+	// 这一类的 BxDF 最好使用 delta distributions 为 0 来描述
+	// 这个函数，处理：
+	// 1. 用 delta distributions 描述的散射
+	// 2. 从 BxDF 沿多个方向，做散射光 的 随机采样 (14.1 的 Monte Carlo 的 BSDF 采样
+	//
+	// 同理，该函数传入 wo 和 wi，并返回 BxDF 的光照 分布
+	// 对于 delta distributions，BxDF 必须选择这种方式传入 入射光，因为 调用者 没有其他机会生成正确的 wi ????
+	// sample 和 pdf 参数会在 14.1 中说明
     virtual Spectrum Sample_f(const Vector3f &wo, Vector3f *wi,
                               const Point2f &sample, Float *pdf,
                               BxDFType *sampledType = nullptr) const;
+	// 求半球全反射
+	// 对于使用 Monte Carlo 的 BxDF 算法，我们需要 nSamples 和 samples 这两个参数
     virtual Spectrum rho(const Vector3f &wo, int nSamples,
                          const Point2f *samples) const;
+	// 半球-半球 反射
+	// 可以不传入 wo,wi
+	// 参数是 Monte Carlo 的 BxDF 算法 的需求
     virtual Spectrum rho(int nSamples, const Point2f *samples1,
                          const Point2f *samples2) const;
     virtual Float Pdf(const Vector3f &wo, const Vector3f &wi) const;
     virtual std::string ToString() const = 0;
 
     // BxDF Public Data
+	// 保存 BxDF 的类型
     const BxDFType type;
 };
 
@@ -252,6 +283,9 @@ inline std::ostream &operator<<(std::ostream &os, const BxDF &bxdf) {
     return os;
 }
 
+// 在用于表示 混合材质时，MixMaterial
+// 我们可以用 一个 BxDF* 和 Spectrum 来实现此功能
+// 其他的接口，就是直接乘上该参数即可
 class ScaledBxDF : public BxDF {
   public:
     // ScaledBxDF Public Methods
@@ -273,6 +307,7 @@ class ScaledBxDF : public BxDF {
 
   private:
     BxDF *bxdf;
+	// 缩放参数
     Spectrum scale;
 };
 
