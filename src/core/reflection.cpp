@@ -1,4 +1,4 @@
-
+﻿
 /*
     pbrt source code is Copyright(c) 1998-2016
                         Matt Pharr, Greg Humphreys, and Wenzel Jakob.
@@ -44,6 +44,8 @@
 namespace pbrt {
 
 // BxDF Utility Functions
+// 计算 电介质（绝缘体） 非偏振光 的 菲涅尔反射率
+// 入射角的 cos 值，被提前传入
 Float FrDielectric(Float cosThetaI, Float etaI, Float etaT) {
     cosThetaI = Clamp(cosThetaI, -1, 1);
     // Potentially swap indices of refraction
