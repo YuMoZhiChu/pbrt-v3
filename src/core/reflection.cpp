@@ -49,8 +49,10 @@ namespace pbrt {
 Float FrDielectric(Float cosThetaI, Float etaI, Float etaT) {
     cosThetaI = Clamp(cosThetaI, -1, 1);
     // Potentially swap indices of refraction
+	// 入射角的余弦值，可以用来判断 入射光是从 表面射入(+) 还是 内部射出(+)
     bool entering = cosThetaI > 0.f;
     if (!entering) {
+		// 保证 etaI 是入射的材质 的 折射率， eta 是出射的材质 的 折射率
         std::swap(etaI, etaT);
         cosThetaI = std::abs(cosThetaI);
     }
@@ -60,6 +62,9 @@ Float FrDielectric(Float cosThetaI, Float etaI, Float etaT) {
     Float sinThetaT = etaI / etaT * sinThetaI;
 
     // Handle total internal reflection
+	// 当光传入一个折射率比较小的介质是，可能会导致，在入射角附近的光，完全不会发射折射
+	// 发生这种情况的最大角度，成为临界角，当入射角的 theta_i 大于最大临界角时，会发生 全反射现象
+	// 这种情况下，所有的光，都会用作于反射
     if (sinThetaT >= 1) return 1;
     Float cosThetaT = std::sqrt(std::max((Float)0, 1 - sinThetaT * sinThetaT));
     Float Rparl = ((etaT * cosThetaI) - (etaI * cosThetaT)) /
@@ -70,6 +75,7 @@ Float FrDielectric(Float cosThetaI, Float etaI, Float etaT) {
 }
 
 // https://seblagarde.wordpress.com/2013/04/29/memo-on-fresnel-equations/
+// 计算 电介质(绝缘体) 和 导体 之间的 菲涅尔反射率
 Spectrum FrConductor(Float cosThetaI, const Spectrum &etai,
                      const Spectrum &etat, const Spectrum &k) {
     cosThetaI = Clamp(cosThetaI, -1, 1);
@@ -135,12 +141,17 @@ std::string FresnelDielectric::ToString() const {
     return StringPrintf("[ FrenselDielectric etaI: %f etaT: %f ]", etaI, etaT);
 }
 
+// 这个函数的输入是 wo，输出是 wi，以及对应的反射光谱
 Spectrum SpecularReflection::Sample_f(const Vector3f &wo, Vector3f *wi,
                                       const Point2f &sample, Float *pdf,
                                       BxDFType *sampledType) const {
     // Compute perfect specular reflection direction
+	// 先计算出入射光方向，因为发现是 0，0，1
     *wi = Vector3f(-wo.x, -wo.y, wo.z);
     *pdf = 1;
+	// fresnel->Evaluate(CosTheta(*wi)) 这个是反射系数
+	// * R 是乘上基础颜色
+	// / AbsCosTheta(*wi) 是做 cos 的除法运算
     return fresnel->Evaluate(CosTheta(*wi)) * R / AbsCosTheta(*wi);
 }
 

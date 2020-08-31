@@ -100,6 +100,7 @@ inline Float CosDPhi(const Vector3f &wa, const Vector3f &wb) {
         -1, 1);
 }
 
+// 根据 wo，计算 wr 的方法
 inline Vector3f Reflect(const Vector3f &wo, const Vector3f &n) {
     return -wo + 2 * Dot(wo, n) * n;
 }
@@ -311,10 +312,13 @@ class ScaledBxDF : public BxDF {
     Spectrum scale;
 };
 
+// 这是一个抽象的 菲尼尔类，提供了用于菲涅尔计算的接口
+// 该抽象父类，可以简化后续 BRDF 的实现
 class Fresnel {
   public:
     // Fresnel Interface
     virtual ~Fresnel();
+	// 传入入射方向 和 表面法线 的余弦值，返回 表面的 反射光
     virtual Spectrum Evaluate(Float cosI) const = 0;
     virtual std::string ToString() const = 0;
 };
@@ -324,9 +328,11 @@ inline std::ostream &operator<<(std::ostream &os, const Fresnel &f) {
     return os;
 }
 
+// 导体的 菲涅尔 计算
 class FresnelConductor : public Fresnel {
   public:
     // FresnelConductor Public Methods
+	// 调用的是 FrConductor，对 cosThetal 做了 abs 处理
     Spectrum Evaluate(Float cosThetaI) const;
     FresnelConductor(const Spectrum &etaI, const Spectrum &etaT,
                      const Spectrum &k)
@@ -334,12 +340,15 @@ class FresnelConductor : public Fresnel {
     std::string ToString() const;
 
   private:
+	// 入射材质的折射率，折射材质的折射率，以及，导体吸收参数 k
     Spectrum etaI, etaT, k;
 };
 
+// 电介质的 菲涅尔 计算
 class FresnelDielectric : public Fresnel {
   public:
     // FresnelDielectric Public Methods
+	// 调用的是 FrDielectric
     Spectrum Evaluate(Float cosThetaI) const;
     FresnelDielectric(Float etaI, Float etaT) : etaI(etaI), etaT(etaT) {}
     std::string ToString() const;
@@ -350,10 +359,12 @@ class FresnelDielectric : public Fresnel {
 
 class FresnelNoOp : public Fresnel {
   public:
+	// 直接全反射
     Spectrum Evaluate(Float) const { return Spectrum(1.); }
     std::string ToString() const { return "[ FresnelNoOp ]"; }
 };
 
+// 计算镜面反射的类
 class SpecularReflection : public BxDF {
   public:
     // SpecularReflection Public Methods
@@ -361,6 +372,7 @@ class SpecularReflection : public BxDF {
         : BxDF(BxDFType(BSDF_REFLECTION | BSDF_SPECULAR)),
           R(R),
           fresnel(fresnel) {}
+	// 这里返回的是 0，因为镜面反射，在任何方向，不会返回任何散射
     Spectrum f(const Vector3f &wo, const Vector3f &wi) const {
         return Spectrum(0.f);
     }
@@ -371,7 +383,9 @@ class SpecularReflection : public BxDF {
 
   private:
     // SpecularReflection Private Data
+	// 光谱，用于缩放反射的衍射
     const Spectrum R;
+	// 菲涅尔对象指针，用于描述电介质或导体的菲涅尔特性
     const Fresnel *fresnel;
 };
 
