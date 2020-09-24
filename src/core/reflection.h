@@ -105,6 +105,11 @@ inline Vector3f Reflect(const Vector3f &wo, const Vector3f &n) {
     return -wo + 2 * Dot(wo, n) * n;
 }
 
+// 计算，折射，的出射角的计算流程
+// wi 入射角
+// n 跟入射角同一半球体内的法线
+// eta 折射率
+// wt 计算出的 折射方向
 inline bool Refract(const Vector3f &wi, const Normal3f &n, Float eta,
                     Vector3f *wt) {
     // Compute $\cos \theta_\roman{t}$ using Snell's law
@@ -389,6 +394,7 @@ class SpecularReflection : public BxDF {
     const Fresnel *fresnel;
 };
 
+// 计算镜面透射的类
 class SpecularTransmission : public BxDF {
   public:
     // SpecularTransmission Public Methods
@@ -400,6 +406,7 @@ class SpecularTransmission : public BxDF {
           etaB(etaB),
           fresnel(etaA, etaB),
           mode(mode) {}
+	// 因为 BTDF 是 缩放的增量分布 scaled delta distribution，所以这里返回的是 0（也可以理解成，没有散射
     Spectrum f(const Vector3f &wo, const Vector3f &wi) const {
         return Spectrum(0.f);
     }
@@ -410,12 +417,18 @@ class SpecularTransmission : public BxDF {
 
   private:
     // SpecularTransmission Private Data
+	// 缩放（比如自身颜色
     const Spectrum T;
+	// etaA 是 above 表面的折射率
+	// etaB 是 below 表面的折射率
     const Float etaA, etaB;
-    const FresnelDielectric fresnel;
+    // 电介质的菲涅尔计算，因为导体通常不透光，所以始终用 电介质也就是非导体 的计算方式
+	const FresnelDielectric fresnel;
+	// 计算 Ray 的交点时，是从 光源 开始，还是从 摄像机 开始
     const TransportMode mode;
 };
 
+// 为了使得 14,15,16 章中的某些 Monte Carlo 更有效率，所以提供了一个调制版的镜面版本
 class FresnelSpecular : public BxDF {
   public:
     // FresnelSpecular Public Methods
@@ -430,6 +443,7 @@ class FresnelSpecular : public BxDF {
     Spectrum f(const Vector3f &wo, const Vector3f &wi) const {
         return Spectrum(0.f);
     }
+	// 14.1.3 的内容
     Spectrum Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &u,
                       Float *pdf, BxDFType *sampledType) const;
     Float Pdf(const Vector3f &wo, const Vector3f &wi) const { return 0; }

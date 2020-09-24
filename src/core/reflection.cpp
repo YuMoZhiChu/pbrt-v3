@@ -160,15 +160,20 @@ std::string SpecularReflection::ToString() const {
            std::string(" fresnel: ") + fresnel->ToString() + std::string(" ]");
 }
 
+// 我们证明了，光的辐射度，在经过表面时，是如何变化的，即 eta_i^2/eta_t^2
+// 这个应用，只能用于，从光源出发的 Ray，不能用于，从摄像机出发的 Ray，这个将在 16.1 中讨论
 Spectrum SpecularTransmission::Sample_f(const Vector3f &wo, Vector3f *wi,
                                         const Point2f &sample, Float *pdf,
                                         BxDFType *sampledType) const {
     // Figure out which $\eta$ is incident and which is transmitted
+	// 首先判断，入射的 Ray，是进入 屈光介质，还是 离开 屈光介质
     bool entering = CosTheta(wo) > 0;
+	// >0 是，从外进入的
     Float etaI = entering ? etaA : etaB;
     Float etaT = entering ? etaB : etaA;
 
     // Compute ray direction for specular transmission
+	// 传入，入射光，法线（法线已经跟wo是同半球面的），eta参数比，我们要求的 wi
     if (!Refract(wo, Faceforward(Normal3f(0, 0, 1), wo), etaI / etaT, wi))
         return 0;
     *pdf = 1;
