@@ -428,7 +428,7 @@ class SpecularTransmission : public BxDF {
     const TransportMode mode;
 };
 
-// 为了使得 14,15,16 章中的某些 Monte Carlo 更有效率，所以提供了一个调制版的镜面版本
+// 为了使得 14,15,16 章中的某些 Monte Carlo 更有效率，所以提供了一个调制版的镜面版本 ????
 class FresnelSpecular : public BxDF {
   public:
     // FresnelSpecular Public Methods
